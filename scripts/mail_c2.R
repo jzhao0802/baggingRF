@@ -9,11 +9,11 @@ wk_dir = "./"
 # Setup R work directory
 setwd(wk_dir)
 # Load R packages
-source("loadpackage.R")
+source("scripts/loadpackage.R")
 # Auxiliary functions
-source("auxfunctions.R")
+source("functions/auxfunctions.R")
 # 
-source("funs_baggingRF.R")
+source("functions/funs_baggingRF.R")
 
 timeStamp <- as.character(Sys.time())
 timeStamp <- gsub(":", ".", timeStamp)  # replace ":" by "."

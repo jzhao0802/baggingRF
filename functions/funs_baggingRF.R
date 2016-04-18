@@ -605,11 +605,11 @@ run_bagging_rf <- function(n.simu, wk_dir, outDir, lasso_rf_iters)
     sfExport('undbag_lasso_rf'
     )
     
-    sfSource(paste0(wk_dir, "loadpackage.R"))
+    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
     # Auxiliary functions
-    sfSource(paste0(wk_dir, "auxfunctions.R"))
+    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
     # 
-    sfSource(paste0(wk_dir, "funs_baggingRF.R"))
+    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
     
     sfClusterEval(library(ggplot2))
     sfClusterEval(library(ROCR))
@@ -722,11 +722,11 @@ run_perf_3M <- function(outDir, wk_dir, lasso_rf_iters, n.simu, recall_tar, file
     sfExport('get_perf_3M_par', 'msOnTest_sep_v2'
     )
     
-    sfSource(paste0(wk_dir, "loadpackage.R"))
+    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
     # Auxiliary functions
-    sfSource(paste0(wk_dir, "auxfunctions.R"))
+    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
     # 
-    sfSource(paste0(wk_dir, "funs_baggingRF.R"))
+    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
     
     sfClusterEval(library(ggplot2))
     sfClusterEval(library(ROCR))
@@ -832,11 +832,11 @@ run_perf_2.5M <- function(outDir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fi
     sfExport('get_perf_2.5M_par', 'msOnTest_sep_v2'
     )
     
-    sfSource(paste0(wk_dir, "loadpackage.R"))
+    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
     # Auxiliary functions
-    sfSource(paste0(wk_dir, "auxfunctions.R"))
+    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
     # 
-    sfSource(paste0(wk_dir, "funs_baggingRF.R"))
+    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
     
     sfClusterEval(library(ggplot2))
     sfClusterEval(library(ROCR))
