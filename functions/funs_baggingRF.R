@@ -424,8 +424,15 @@ run_perf_3M_forPRcurve <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_t
 
 
 
-get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile){
-    dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M, 
+                            path_3M, nonhaeFile, haeFile){
+  ################################################################################
+  # Lichao: 
+  # Previously there was this line: 
+  # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+  # and this shouldn't be there since the same was done in the function that
+  # calls this one. Otherwise the directory won't be correct. 
+  ################################################################################
     
     outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
     # if(!dir.exists(plots_path)){dir.create(plots_path, showWarnings = T, recursive = T, model='0777')}
@@ -486,7 +493,8 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_
     #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
     
     cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
-    sfExport(  'dir', 'wk_dir', "nonhaeFile", "haeFile")
+    sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", "lasso_rf_iters",
+             "recall_tar", "fileNm_3M", "path_3M")
     sfExport('get_perf_3M_par', 'msOnTest_sep_v2'
     )
     
@@ -519,10 +527,14 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_
                              , lasso_rf_iters 
                              , recall_tar
                              , fileNm_3M
-                             , path_3M
+                             , path_3M, 
+                             nonhaeFile,
+                             haeFile
     )
     sfStop()
     
+#     get_perf_3M_par(1, dir, lasso_rf_iters, recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile)
+#     print("get_perf_3M_par finished.")
     ms_allSimu <- ldply(temp, quickdf)
     
     write.csv(ms_allSimu, pate0(trace_path, 'perf_on3M_allSimu.csv'))
