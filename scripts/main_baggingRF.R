@@ -46,7 +46,8 @@ dir.create(main.outDir, showWarnings = TRUE, recursive = TRUE, mode = "0777")
 
 
 run_split(n.simu=main.n.simu, nonhaeFile=main.nonhaeFile, haeFile=main.haeFile, 
-          haeDir=main.haeDir, nonhaeDir=main.nonhaeDir, outDir=main.outDir)
+          haeDir=main.haeDir, nonhaeDir=main.nonhaeDir, outDir=main.outDir,
+          iters=main.iters)
 print("run_split finished.")
 
 
