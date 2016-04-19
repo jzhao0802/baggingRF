@@ -70,92 +70,128 @@ msOnTest_sep_v3 <- function(pred, response, recall_tar, simu){
 }
 
 
-split_simulations <- function(simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir){
-    dat_hae_1111_rf_nov26 <- 
-        read.csv(paste0(haeDir, "dat_hae_1111_rf_nov26_flag.csv")
-                 , header=T, sep=",", check.names=F)
-    
-    
-    
-    hae <- dat_hae_1111_rf_nov26 %>% filter(FLAG_==0) %>% select(-c( FLAG_, REGION)) 
-    # hae <- as.data.frame(model.matrix(~., hae)[, -1])
-    hae$GENDERM <- ifelse(hae$GENDER=='M', 1, 0)
-    hae$GENDER <- NULL
-    
-    HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))
-    hae <- hae[hae$PATIENT_ID %in% HAE_ptid]
-    # nonhae
-    if(nonhaeFile=='nonhae_Dong200K'){
-        load(paste(haeDir, "dat_nonhae_1111_rf.RData", sep=""))
-        
-        nonhae <- dat_nonhae_1111_rf %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days, REGION))
-        nonhae <- nonhae %>% mutate(hae_patient_id=HAE_PATIENT)  %>% select(-HAE_PATIENT) 
-        nonhae$hae_patient_id <- as.numeric(nonhae$hae_patient_id)
-        # nonhae <- as.data.frame(model.matrix(~., nonhae)[, -1])
-        nonhae$GENDERM <- ifelse(nonhae$GENDER=='M', 1, 0)
-        nonhae$GENDER <- NULL
-    }else if(grepl('nonhae_200K', nonhaeFile, ignore.case = T)){
-        dat_nonhae <- read.table(paste0(nonhaeDir
-                                        , nonhaeFile, ".csv")
-                                 , sep=',' 
-                                 , stringsAsFactors = F
-                                 , head=T
-        )
-        nonhae <- dat_nonhae %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days))
-    }else if(grepl('300K', nonhaeFile, ignore.case = T)){
-        dat_nonhae <- read.table(paste0(nonhaeDir
-                                        , nonhaeFile, ".csv")
-                                 , sep=',' 
-                                 , stringsAsFactors = F
-                                 , head=T
-        )
-        dat_nonhae <- dat_nonhae %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days))
-        
-    }else{
-        stop('the wrong nonhae input!\n')
-    }
-    
-    # sample parts of nonhae according to the times which is the repeated times of nonhae to hae
-    #     times <- 3
-    #     nonhae_sample <- nonhae %>% 
-    #         group_by(hae_patient_id) %>%
-    #         sample_n(times)
-    #     nonhae <- as.data.frame(nonhae_sample)
-    
+split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, iters){
+  
+  dat_hae_1111_rf_nov26 <- 
+      read.csv(paste0(haeDir, "dat_hae_1111_rf_nov26_flag.csv")
+               , header=T, sep=",", check.names=F)
+  
+  
+  
+  hae <- dat_hae_1111_rf_nov26 %>% filter(FLAG_==0) %>% select(-c( FLAG_, REGION)) 
+  # hae <- as.data.frame(model.matrix(~., hae)[, -1])
+  hae$GENDERM <- ifelse(hae$GENDER=='M', 1, 0)
+  hae$GENDER <- NULL
+  
+  ################################################################################
+  # Lichao: 
+  # This line was  
+  # HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))
+  # but there was not such a RDS file at all! I had to create such an RDS file 
+  # in order to execute the code. 
+  # Seriously, we need to be way more careful when coding. 
+  ################################################################################
+  HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))
+  ################################################################################
+  # Lichao: 
+  # The following line was  
+  # hae <- hae[hae$PATIENT_ID %in% HAE_ptid]
+  # It wouldn't run since hae is a data frame. 
+  ################################################################################
+  hae <- hae[hae$PATIENT_ID %in% HAE_ptid, ]
+  # nonhae
+  if(nonhaeFile=='nonhae_Dong200K'){
+      load(paste(haeDir, "dat_nonhae_1111_rf.RData", sep=""))
+      
+      nonhae <- dat_nonhae_1111_rf %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days, REGION))
+      nonhae <- nonhae %>% mutate(hae_patient_id=HAE_PATIENT)  %>% select(-HAE_PATIENT) 
+      nonhae$hae_patient_id <- as.numeric(nonhae$hae_patient_id)
+      # nonhae <- as.data.frame(model.matrix(~., nonhae)[, -1])
+      nonhae$GENDERM <- ifelse(nonhae$GENDER=='M', 1, 0)
+      nonhae$GENDER <- NULL
+  }else if(grepl('nonhae_200K', nonhaeFile, ignore.case = T)){
+      dat_nonhae <- read.table(paste0(nonhaeDir
+                                      , nonhaeFile, ".csv")
+                               , sep=',' 
+                               , stringsAsFactors = F
+                               , head=T
+      )
+      nonhae <- dat_nonhae %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days))
+  }else if(grepl('300K', nonhaeFile, ignore.case = T)){
+      dat_nonhae <- read.table(paste0(nonhaeDir
+                                      , nonhaeFile, ".csv")
+                               , sep=',' 
+                               , stringsAsFactors = F
+                               , head=T
+      )
+      dat_nonhae <- dat_nonhae %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days))
+      
+  }else{
+      stop('the wrong nonhae input!\n')
+  }
+  
+  ################################################################################
+  # Lichao: 
+  # Previously the following line was only
+  # outDir <- paste0(outDir, nonhaeFile, '&', haeFile, '\\')
+  # which was not compatible to code in other functions that reads data from the dir
+  ################################################################################
+  outDir <- paste0(outDir, nonhaeFile, '&', haeFile, '/iters=', iters, "/")
+  if(!dir.exists(outDir)) 
+    dir.create(outDir, showWarnings = T, recursive = TRUE)
+  
+  set.seed(20)
+  
+  for (simu in 1:n.simu)
+  {
     if(nonhaeFile=='for_new300K'){
-        set.seed(20)
-        tr_idx <- createFolds(hae$PATIENT_ID, 5, returnTrain=T)[[simu]]
-        dat_hae_trn <- hae[tr_idx, ]
-        dat_hae_tst <- hae[-tr_idx, ]
-        
-        tr_idx_nonhae <- createFolds(dat_nonhae$patient_id, 5, returnTrain=T)[[simu]]
-        dat_nonhae_trn <- dat_nonhae[tr_idx_nonhae, ]
-        dat_nonhae_tst <- dat_nonhae[-tr_idx_nonhae, ]
-        
+      ################################################################################
+      # Lichao: 
+      # tr_idx <- createFolds(hae$PATIENT_ID, 5, returnTrain=T)[[simu]]
+      # where the number '5' is a constant, which should be replaced by n.simu.
+      ################################################################################
+      tr_idx <- createFolds(hae$PATIENT_ID, n.simu, returnTrain=T)[[simu]]
+      dat_hae_trn <- hae[tr_idx, ]
+      dat_hae_tst <- hae[-tr_idx, ]
+      
+      tr_idx_nonhae <- createFolds(dat_nonhae$patient_id, n.simu, returnTrain=T)[[simu]]
+      dat_nonhae_trn <- dat_nonhae[tr_idx_nonhae, ]
+      dat_nonhae_tst <- dat_nonhae[-tr_idx_nonhae, ]
+      
     }else{
-        set.seed(20)
-        tr_idx <- createFolds(hae$PATIENT_ID, 5, returnTrain=T)[[simu]]
-        dat_hae_trn <- hae[tr_idx, ]
-        dat_hae_tst <- hae[-tr_idx, ]
-        
-        dat_nonhae_trn <- nonhae[nonhae$hae_patient_id %in% dat_hae_trn$PATIENT_ID,]
-        dat_nonhae_tst <- nonhae[nonhae$hae_patient_id %in% dat_hae_tst$PATIENT_ID,]
+      tr_idx <- createFolds(hae$PATIENT_ID, n.simu, returnTrain=T)[[simu]]
+      dat_hae_trn <- hae[tr_idx, ]
+      dat_hae_tst <- hae[-tr_idx, ]
+      
+      dat_nonhae_trn <- nonhae[nonhae$hae_patient_id %in% dat_hae_trn$PATIENT_ID,]
+      dat_nonhae_tst <- nonhae[nonhae$hae_patient_id %in% dat_hae_tst$PATIENT_ID,]
     }
     
     dat_nonhae_trn$HAE <- 0
     dat_nonhae_tst$HAE <- 0
-    outDir <- paste0(outDir, nonhaeFile, '&', haeFile, '\\')
-    if(!dir.exists(outDir)) dir.create(outDir, showWarnings = T, recursive = TRUE)
+    
+    outDirThisSimu <- paste0(outDir, "simu", simu, "/")
+    if(!dir.exists(outDirThisSimu)) 
+      dir.create(outDirThisSimu, showWarnings = T, recursive = TRUE)
+    
+    print("outDir:")
+    print(outDir)
+    print("outDirThisSimu")
+    print(outDirThisSimu)
     
     save(dat_hae_trn, dat_hae_tst, dat_nonhae_trn , dat_nonhae_tst
-         , file=paste(outDir, "dat_hae_trn_tst_split_simu", simu, ".RData", sep=""))
-    
+         , file=paste(outDirThisSimu, "dat_hae_trn_tst_split_simu", simu, ".RData", sep=""))
+  }
 }
 
-run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, split_fun){
-    for (i in 1:n.simu){
-        split_simulations(simu=i, haeFile=haeFile, nonhaeFile=nonhaeFile, haeDir=haeDir, nonhaeDir=nonhaeDir, outDir=outDir)
-    }
+run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, iters){
+  ################################################################################
+  # Lichao: 
+  # There's no need to do it 5 times. Once is enough. 
+  ################################################################################
+  
+  split_simulations(n.simu=n.simu, haeFile=haeFile, nonhaeFile=nonhaeFile, haeDir=haeDir, 
+                    nonhaeDir=nonhaeDir, outDir=outDir, iters=iters)
 }
 
 
@@ -164,8 +200,15 @@ run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, sp
 
 run_bagging_rf_par_forTrainigFit <- function(simu, dir, lasso_rf_iters, nonhaeFile, haeFile)
 {
-    dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
-    outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
+  ################################################################################
+  # Lichao: 
+  # Previously there was this line: 
+  # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+  # and this shouldn't be there since the same was done in the function that
+  # calls this one. Otherwise the directory won't be correct. 
+  ################################################################################
+    
+  outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
     if(!dir.exists(outDir)) dir.create(outDir, showWarnings = T, recursive = TRUE)
     
     load(paste(dataDir, "dat_hae_trn_tst_split_simu", simu, ".RData", sep=""))
@@ -247,15 +290,15 @@ run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeF
     #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
     
     cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
-    sfExport(  'dir', 'wk_dir')
+    sfExport(  'dir', 'wk_dir', "nonhaeFile", "haeFile")
     sfExport('undbag_lasso_rf'
     )
     
-    sfSource(paste0(wk_dir, "loadpackage.R"))
+    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
     # Auxiliary functions
-    sfSource(paste0(wk_dir, "auxfunctions.R"))
+    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
     # 
-    sfSource(paste0(wk_dir, "funs_baggingRF.R"))
+    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
     
     sfClusterEval(library(ggplot2))
     sfClusterEval(library(ROCR))
@@ -270,13 +313,20 @@ run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeF
     sfClusterEval(library(caTools))
     # sfClusterEval(library(gbm))
     # sfClusterEval(library(xlsx))
-    sfClusterEval(library(dplyr))    
+    sfClusterEval(library(dplyr))   
+    ################################################################################
+    # Lichao: 
+    # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
+    ################################################################################
     temp <- sfClusterApplyLB(1:n.simu, run_bagging_rf_par_forTrainigFit
                              , dir
-                             , lasso_rf_iters 
+                             , lasso_rf_iters, 
+                             nonhaeFile, 
+                             haeFile
     )
     #save(pred_ts_allSim, file=paste0(modelDir, '//pred_allSim.RData'))
     sfStop()
+    # run_bagging_rf_par_forTrainigFit(1, dir, lasso_rf_iters, nonhaeFile, haeFile)
     #     cat(unlist(lapply(pred_ts_allSim, length)), '\n')
 }
 
@@ -431,15 +481,15 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_
     #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
     
     cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
-    sfExport(  'dir', 'wk_dir')
+    sfExport(  'dir', 'wk_dir', "nonhaeFile", "haeFile")
     sfExport('get_perf_3M_par', 'msOnTest_sep_v2'
     )
     
-    sfSource(paste0(wk_dir, "loadpackage.R"))
+    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
     # Auxiliary functions
-    sfSource(paste0(wk_dir, "auxfunctions.R"))
+    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
     # 
-    sfSource(paste0(wk_dir, "funs_baggingRF.R"))
+    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
     
     sfClusterEval(library(ggplot2))
     sfClusterEval(library(ROCR))
@@ -455,6 +505,10 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_
     # sfClusterEval(library(gbm))
     # sfClusterEval(library(xlsx))
     sfClusterEval(library(dplyr))    
+    ################################################################################
+    # Lichao: 
+    # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
+    ################################################################################
     temp <- sfClusterApplyLB(1:n.simu, get_perf_3M_par
                              , dir
                              , lasso_rf_iters 
@@ -537,11 +591,11 @@ run_perf_2.5M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileN
     sfExport('get_perf_2.5M_par', 'msOnTest_sep_v2'
     )
     
-    sfSource(paste0(wk_dir, "loadpackage.R"))
+    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
     # Auxiliary functions
-    sfSource(paste0(wk_dir, "auxfunctions.R"))
+    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
     # 
-    sfSource(paste0(wk_dir, "funs_baggingRF.R"))
+    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
     
     sfClusterEval(library(ggplot2))
     sfClusterEval(library(ROCR))
