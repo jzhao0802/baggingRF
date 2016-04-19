@@ -207,7 +207,6 @@ run_bagging_rf_par_forTrainigFit <- function(simu, dir, lasso_rf_iters, nonhaeFi
   # and this shouldn't be there since the same was done in the function that
   # calls this one. Otherwise the directory won't be correct. 
   ################################################################################
-    
   outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
     if(!dir.exists(outDir)) dir.create(outDir, showWarnings = T, recursive = TRUE)
     
@@ -333,10 +332,16 @@ run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeF
 
 
 get_perf_allSimu <- function(dir, iters, n.simu, recall_tar, haeFile, nonhaeFile){
-    dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+    dir <- paste0(dir, nonhaeFile, '&', haeFile, '/')
     
     temp <- lapply(1:n.simu, function(i){
-        load(paste0(dir, "dat_hae_trn_tst_split_simu", i, ".RData"))
+      ################################################################################
+      # Lichao: 
+      # Previously there was this line: 
+      # load(paste0(dir, "dat_hae_trn_tst_split_simu", i, ".RData"))
+      # which doesn't correspond to the correct directory defined in training. 
+      ################################################################################
+        load(paste0(dir, "iters=", iters, "/simu", i, "/dat_hae_trn_tst_split_simu", i, ".RData"))
         resp <- c(dat_hae_tst$HAE, dat_nonhae_tst$HAE)
         saveRDS(resp, file = paste0(dir, "resp_simu", i, ".RData"))
         load(paste0(dir, "iters=", iters, '\\simu', i, '\\tst_rf_prob.RData'))
