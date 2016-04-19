@@ -33,6 +33,6 @@ install_load <- function (package1, ...)  {
 }
 
 
-install_load("ggplot2", 'ROCR', 'PRROC', 'randomForest', 'caret', 'e1071', 'reshape2', 'sqldf', 'glmnet', 'caTools'
-             , "gbm", "dplyr", "snowfall", 'plyr')
+# install_load("ggplot2", 'ROCR', 'PRROC', 'randomForest', 'caret', 'e1071', 'reshape2', 'sqldf', 'glmnet', 'caTools'
+#              , "gbm", "dplyr", "snowfall", 'plyr')
 
