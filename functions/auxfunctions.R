@@ -100,51 +100,54 @@ aupr_trapz <- function(v_sens, v_ppv){
 # dat_pos/dat_neg: PATIENT_ID, HAE and predictors
 undbag_lasso_rf <- function(rf_formula, dat_pos, dat_neg, iters, mtry, ntree){
 
-    set.seed(20)
+  set.seed(20)
 	if(sum(grepl('patient_id', names(dat_neg), ignore.case = T))>1){
-	    flds=createFolds(dat_neg[, grepl('hae_patient_id', names(dat_neg), ignore.case = T)], iters)
+    flds <- createFolds(dat_neg[, grepl('hae_patient_id', names(dat_neg), ignore.case = T)], iters)
 	}else{
-	    flds=createFolds(dat_neg[, grepl('patient_id', names(dat_neg), ignore.case = T)], iters) #for new 300K dataset
+    flds <- createFolds(dat_neg[, grepl('patient_id', names(dat_neg), ignore.case = T)], iters) #for new 300K dataset
 	    
 	}
 
-	x_pos = dat_pos[,-match(c('PATIENT_ID', 'HAE'), names(dat_pos))]
-	y_pos = dat_pos$HAE
-	x_neg = dat_neg[,-match(grep('patient_id|hae', names(dat_neg), valu=T, perl=T, ignore.case = T)
-	                        , names(dat_neg))]
-	y_neg = dat_neg$HAE
+	x_pos <- dat_pos[,-match(c('PATIENT_ID', 'HAE'), names(dat_pos))]
+	y_pos <- dat_pos$HAE
+	x_neg <- dat_neg[
+	  ,-match(grep('patient_id|hae', names(dat_neg), valu=T, perl=T, ignore.case = T), 
+	          names(dat_neg))]
+	y_neg <- dat_neg$HAE
 
-	undbag_lasso_fit=list()
-	undbag_rf_fit=list()
+	undbag_lasso_fit <- list()
+	undbag_rf_fit <- list()
 
 	#Sys.time()->start
 	for (i in 1:iters){###
 
 		#print(paste(i,"/",iters,sep=""))
 
-		x_samp <- rbind(x_pos, x_neg[flds[[i]],])
-		row.names(x_samp) <- NULL
-		y_samp <- c(y_pos, y_neg[flds[[i]]])
-		xy_samp <- data.frame(as.numeric(y_samp), x_samp)
-		names(xy_samp)[1]="HAE"
+    x_samp <- rbind(x_pos, x_neg[flds[[i]],])
+    row.names(x_samp) <- NULL
+    y_samp <- c(y_pos, y_neg[flds[[i]]])
+    xy_samp <- data.frame(as.numeric(y_samp), x_samp)
+    names(xy_samp)[1] <- "HAE"
 
                 # LASSO
 # 		undbag_lasso_fit[[i]] <- cv.glmnet(as.matrix(x_samp), y_samp, family='binomial', alpha=1) # LASSO CV
 
                 # Random Forest
-	        rf_samp <- xy_samp
-	        rf_samp$HAE = as.factor(rf_samp$HAE)
+    rf_samp <- xy_samp
+    rf_samp$HAE <- as.factor(rf_samp$HAE)
 # 	        rf_samp <- rf_samp[1:2000,]
 # 		undbag_rf_fit[[i]] <- randomForest(formula=rf_formula, data=rf_samp, ntree=ntree, mtry=mtry, replace=T)
-	    set.seed(20)
-        undbag_rf_fit[[i]] <- randomForest(x=as.matrix(x_samp), y=as.factor(y_samp), ntree=ntree, mtry=mtry, replace=T)
+    set.seed(20)
+    undbag_rf_fit[[i]] <- 
+      randomForest(x=as.matrix(x_samp), y=as.factor(y_samp), ntree=ntree, 
+                   mtry=mtry, replace=T)
 	        
-	 }
+  }
 	#print(Sys.time()-start)
 	#each one takes ~44 sec, so total  takes iters x 44 sec.
 
 # 	ans = list(undbag_lasso_fit=undbag_lasso_fit, undbag_rf_fit=undbag_rf_fit)
-	ans = list(undbag_rf_fit=undbag_rf_fit)
+	ans <- list(undbag_rf_fit=undbag_rf_fit)
 	return(ans)
 
 }
