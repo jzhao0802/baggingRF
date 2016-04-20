@@ -77,9 +77,9 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
                , header=T, sep=",", check.names=F)
   
   
-  
-  hae <- dat_hae_1111_rf_nov26 %>% filter(FLAG_==0) %>% select(-c( FLAG_, REGION)) 
-  # hae <- as.data.frame(model.matrix(~., hae)[, -1])
+  hae <- dat_hae_1111_rf_nov26 %>% 
+    filter(FLAG_==0) %>% 
+    select(-c(FLAG_, REGION)) 
   hae$GENDERM <- ifelse(hae$GENDER=='M', 1, 0)
   hae$GENDER <- NULL
   
@@ -102,28 +102,29 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
   if(nonhaeFile=='nonhae_Dong200K'){
       load(paste(haeDir, "dat_nonhae_1111_rf.RData", sep=""))
       
-      nonhae <- dat_nonhae_1111_rf %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days, REGION))
-      nonhae <- nonhae %>% mutate(hae_patient_id=HAE_PATIENT)  %>% select(-HAE_PATIENT) 
+      nonhae <- dat_nonhae_1111_rf %>% 
+        mutate(LOOKBACK_DAYS=lookback_days) %>% 
+        select(-c(lookback_days, REGION))
+      nonhae <- nonhae %>% 
+        mutate(hae_patient_id=HAE_PATIENT)  %>% 
+        select(-HAE_PATIENT) 
       nonhae$hae_patient_id <- as.numeric(nonhae$hae_patient_id)
-      # nonhae <- as.data.frame(model.matrix(~., nonhae)[, -1])
       nonhae$GENDERM <- ifelse(nonhae$GENDER=='M', 1, 0)
       nonhae$GENDER <- NULL
   }else if(grepl('nonhae_200K', nonhaeFile, ignore.case = T)){
-      dat_nonhae <- read.table(paste0(nonhaeDir
-                                      , nonhaeFile, ".csv")
-                               , sep=',' 
-                               , stringsAsFactors = F
-                               , head=T
-      )
-      nonhae <- dat_nonhae %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days))
+      dat_nonhae <- 
+        read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
+                   sep=',', stringsAsFactors = F, head=T)
+      nonhae <- dat_nonhae %>% 
+        mutate(LOOKBACK_DAYS=lookback_days) %>% 
+        select(-c(lookback_days))
   }else if(grepl('300K', nonhaeFile, ignore.case = T)){
-      dat_nonhae <- read.table(paste0(nonhaeDir
-                                      , nonhaeFile, ".csv")
-                               , sep=',' 
-                               , stringsAsFactors = F
-                               , head=T
-      )
-      dat_nonhae <- dat_nonhae %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-c(lookback_days))
+      dat_nonhae <- 
+        read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
+                   sep=',', stringsAsFactors = F, head=T)
+      dat_nonhae <- dat_nonhae %>% 
+        mutate(LOOKBACK_DAYS=lookback_days) %>% 
+        select(-c(lookback_days))
       
   }else{
       stop('the wrong nonhae input!\n')
@@ -172,11 +173,6 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
     outDirThisSimu <- paste0(outDir, "simu", simu, "/")
     if(!dir.exists(outDirThisSimu)) 
       dir.create(outDirThisSimu, showWarnings = T, recursive = TRUE)
-    
-    print("outDir:")
-    print(outDir)
-    print("outDirThisSimu")
-    print(outDirThisSimu)
     
     save(dat_hae_trn, dat_hae_tst, dat_nonhae_trn , dat_nonhae_tst
          , file=paste(outDirThisSimu, "dat_hae_trn_tst_split_simu", simu, ".RData", sep=""))
