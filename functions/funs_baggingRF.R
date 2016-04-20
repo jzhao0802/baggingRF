@@ -1,38 +1,52 @@
+################################################################################
+# Lichao: 
+# Previously the function was defined inside msOnTest_sep_v2. This is not 
+# recommended especially it's a little complex. 
+################################################################################
+
+FindPrecisionAtGivenRecall <- function(recall, rec_prec)
+{
+  idx=which(abs(rec_prec[, 1]-recall)==min(abs(rec_prec[, 1]-recall), na.rm=T))[1]
+  ################################################################################
+  # Lichao: 
+  # Safe guard added. 
+  ################################################################################
+  if (length(idx) == 0)
+    stop("Error! The target recall level doesn't exist in the recal-precision table. ")
+  prec_sel <- rec_prec[idx, 2]
+  return(prec_sel)
+}
+
 
 msOnTest_sep_v2 <- function(pred, response, recall_tar){
-    #pred <- apply(pred, 1, mean, na.rm=T)
-    predobj <- prediction(pred, response)
-    #add plot
-    perf <- performance(predobj, 'ppv', 'sens') # added by jie for recall-precision plot.
-    recall <- perf@x.values[[1]]
-    precision <- perf@y.values[[1]]
-    auc <- performance(predobj, 'auc')@y.values[[1]]
-    rec_prec <- data.frame(recall=recall, precision=precision)
-    rec_prec_omitMiss <- rec_prec[complete.cases(rec_prec),]
-    aupr <- trapz(rec_prec_omitMiss$recall, rec_prec_omitMiss$precision)
-    bucket <- cut(recall, breaks=seq(0, 1, 0.01), include.lowest=T,right=F)
-    rec_prec_byBucket <- aggregate(rec_prec, by=list(bucket), function(i)mean(i, na.rm=T))
-    #write.csv(rec_prec_byBucket, paste('Curve_dong.csv', sep=''), 
-    #         row.names=F, quote=T)
-    # plot
+  #pred <- apply(pred, 1, mean, na.rm=T)
+  predobj <- prediction(pred, response)
+  #add plot
+  perf <- performance(predobj, 'ppv', 'sens') # added by jie for recall-precision plot.
+  recall <- perf@x.values[[1]]
+  precision <- perf@y.values[[1]]
+  auc <- performance(predobj, 'auc')@y.values[[1]]
+  rec_prec <- data.frame(recall=recall, precision=precision)
+  rec_prec_omitMiss <- rec_prec[complete.cases(rec_prec),]
+  aupr <- trapz(rec_prec_omitMiss$recall, rec_prec_omitMiss$precision)
+  bucket <- cut(recall, breaks=seq(0, 1, 0.01), include.lowest=T,right=F)
+  rec_prec_byBucket <- aggregate(rec_prec, by=list(bucket), function(i) mean(i, na.rm=T))
+  #write.csv(rec_prec_byBucket, paste('Curve_dong.csv', sep=''), 
+  #         row.names=F, quote=T)
+  # plot
 #     pdf(file=paste(plots_path, 'recall-precision curve on test on 200K.pdf', sep=''))
 #     plot(recall, precision, type='l', main=paste('recall-precision curve(5 simulations)'))
 #     plot(perf)
-    # dev.off()
-    
-    ##in simulation
-    temp4 <- unlist(lapply(recall_tar, function(X){
-        #idx <- sample(rep(which(abs(rec_prec[, 1]-X)==min(abs(rec_prec[, 1]-X), na.rm=T)), 2), 1)
-        idx=which(abs(rec_prec[, 1]-X)==min(abs(rec_prec[, 1]-X), na.rm=T))[1]
-        prec_sel <- rec_prec[idx, 2]
-        return(prec_sel)
-    }))    
-    
-    ##end
-    ms <- c(auc, aupr, temp4)
-    names(ms) <- c('auc',"aupr", paste("PPV(recall=", recall_tar,')', sep=''))
-    
-    return(list(ms=ms, curve=rec_prec_byBucket, rec_prec=rec_prec))
+  # dev.off()
+  
+  ##in simulation
+  temp4 <- unlist(lapply(recall_tar, FindPrecisionAtGivenRecall, rec_prec=rec_prec))    
+  
+  ##end
+  ms <- c(auc, aupr, temp4)
+  names(ms) <- c('auc',"aupr", paste("PPV(recall=", recall_tar,')', sep=''))
+  
+  return(list(ms=ms, curve=rec_prec_byBucket, rec_prec=rec_prec))
     
 }
 
@@ -236,6 +250,10 @@ run_bagging_rf_par_forTrainigFit <-
   print(Sys.time()-start)
   
   #
+  ################################################################################
+  # Lichao: 
+  # No longer named '*Mar31*'
+  ################################################################################
   saveRDS(trn_undbag_rf_fit, file=paste0(outDir, "trn_rf_fit.RDS"))
   
   # save(dat_hae_trn, dat_nonhae_trn, trn_undbag_rf_fit, file=paste(outDir, "trn_rf_fit_Mar31.RData", sep=""))
@@ -486,128 +504,141 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   # calls this one. Otherwise the directory won't be correct. 
   ################################################################################
     
-    outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
-    # if(!dir.exists(plots_path)){dir.create(plots_path, showWarnings = T, recursive = T, model='0777')}
-    x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv")
-                       , sep=','
-                       , stringsAsFactors = F
-                       , head=T
-    )
-    if('lookback_days' %in% names(x_3M)){
-        x_3M <- x_3M %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-patient_id) %>% select(-lookback_days)
-        
-    }
-    
-    dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
-    
-    # load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
-    # rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
-    gc()
-    
-    tst_prob_rf = rep(0, nrow(x_3M))
-    tst_prob_rf_hae = rep(0, nrow(dat_hae_tst)) #218
-    
-    Sys.time()->start
-    
-    # Bagging LASSO, Bagging Random Forest
-    trn_undbag_rf_fit <- readRDS(file=paste0(dataDir, 'trn_rf_fit.RDS'))
-    # load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
-    for (i in 1:lasso_rf_iters){
-      # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters
-      cat('i=', i, '!\n')
-      tst_prob_rf = tst_prob_rf + predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
-      tst_prob_rf_hae = tst_prob_rf_hae + predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID'), names(dat_hae_tst))], type = "prob")[,2]/lasso_rf_iters
-    }
-    
-    print(Sys.time()-start)
-    # Time difference of 12.26336 mins
-    
-    save( tst_prob_rf_hae, tst_prob_rf, file=paste(outDir, "tst_rf_prob_haeTs&3M.RData", sep=""))
-    
-    resp <- c(rep(1, length(tst_prob_rf_hae)), rep(0, length(tst_prob_rf)))
-    
-    pred <- c(tst_prob_rf_hae, tst_prob_rf)
-    
-    ################################################################################
-    # Lichao: 
-    # Previously the following line was: 
-    # perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05), oudDir)
-    # But function msOnTest_sep_v2 doesn't has a parameter 'outDir'. This is also 
-    # inconsistent with other places where the same function is called. 
-    ################################################################################
-    perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
-    write.csv(perf_result$ms, paste0(outDir, 'perf_on3M.csv'))
-    result <- c(simu=simu, perf_result$ms)
-    return(result)
+  outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
+  # if(!dir.exists(plots_path)){dir.create(plots_path, showWarnings = T, recursive = T, model='0777')}
+  x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv"), sep=',', 
+                     stringsAsFactors = F, head=T)
+  if('lookback_days' %in% names(x_3M)){
+    x_3M <- x_3M %>% 
+      mutate(LOOKBACK_DAYS=lookback_days) %>% 
+      select(-patient_id) %>% 
+      select(-lookback_days)
+  }
+  
+
+  
+  ################################################################################
+  # Lichao: 
+  # Instead of loading all 4 datasets and removing three of them, only one is
+  # loaded now. 
+  ################################################################################
+  dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
+  # load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
+  # rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
+  gc()
+  
+  tst_prob_rf <- rep(0, nrow(x_3M))
+  tst_prob_rf_hae <- rep(0, nrow(dat_hae_tst)) #218
+  
+  Sys.time()->start
+  
+  # Bagging LASSO, Bagging Random Forest
+  trn_undbag_rf_fit <- readRDS(file=paste0(dataDir, 'trn_rf_fit.RDS'))
+  # load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
+  for (i in 1:lasso_rf_iters){
+    # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters
+    cat('i=', i, '!\n')
+    tst_prob_rf <- tst_prob_rf + 
+      predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
+    tst_prob_rf_hae <- tst_prob_rf_hae + 
+      predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID'), names(dat_hae_tst))], type = "prob")[,2]/lasso_rf_iters
+  }
+  
+  print(Sys.time()-start)
+  print("preds finished")
+  # Time difference of 12.26336 mins
+  
+  ################################################################################
+  # Lichao: 
+  # Previously there was this following line: 
+  # save( tst_prob_rf_hae, tst_prob_rf, file=paste(outDir, "tst_rf_prob_haeTs&3M.RData", sep=""))
+  # Now the two predicted vectors are combined before being saved (with the responses). 
+  ################################################################################
+  # save( tst_prob_rf_hae, tst_prob_rf, file=paste(outDir, "tst_rf_prob_haeTs&3M.RData", sep=""))
+  
+  resp <- c(rep(1, length(tst_prob_rf_hae)), rep(0, length(tst_prob_rf)))
+  
+  pred <- c(tst_prob_rf_hae, tst_prob_rf)
+  resp_pred <- cbind(resp, pred)
+  colnames(resp_pred) <- c("resp", "prob")
+  saveRDS(resp_pred, file=paste0(outDir, "tst_rf_prob_haeTs&3M.RDS"))
+  print("df saved")
+  
+  ################################################################################
+  # Lichao: 
+  # Previously the following line was: 
+  # perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05), oudDir)
+  # But function msOnTest_sep_v2 doesn't has a parameter 'outDir'. This is also 
+  # inconsistent with other places where the same function is called. 
+  ################################################################################
+  perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
+  print("msOnTest_sep_v2 finished")
+  write.csv(perf_result$ms, paste0(outDir, 'perf_on3M.csv'))
+  result <- c(simu=simu, perf_result$ms)
+  return(result)
 }
 
-run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_3M, path_3M, haeFile, nonhaeFile){
-    dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
-    
-    trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
-    # if(!dir.exists(trace_path)) dir.create(trace_path, showWarnings = T, recursive = TRUE)
-    
-    traceFile <- paste0(trace_path, 'traceFile_pred3M.csv')
-    cat(file=traceFile, append=T, 'parallele on n.simu simulation start!\n')
-    #     wk_dir = "D:\\jzhao\\Shire_followup\\02_Code\\HAE_R_codes_Dec15\\"
-    
-    sfInit(parallel=TRUE, cpus=n.simu, type='SOCK')
-    #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
-    
-    cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
-    sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", "lasso_rf_iters",
-             "recall_tar", "fileNm_3M", "path_3M")
-    sfExport('get_perf_3M_par', 'msOnTest_sep_v2'
-    )
-    
-    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
-    # Auxiliary functions
-    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
-    # 
-    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
-    
-    sfClusterEval(library(ggplot2))
-    sfClusterEval(library(ROCR))
-    sfClusterEval(library(PRROC))
-    # sfClusterEval(library(FSelector))
-    sfClusterEval(library(randomForest))
-    sfClusterEval(library(caret))
-    sfClusterEval(library(e1071))
-    sfClusterEval(library(reshape2))
-    sfClusterEval(library(sqldf))
-    sfClusterEval(library(glmnet))
-    sfClusterEval(library(caTools))
-    # sfClusterEval(library(gbm))
-    # sfClusterEval(library(xlsx))
-    sfClusterEval(library(dplyr))    
-    ################################################################################
-    # Lichao: 
-    # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
-    ################################################################################
-    temp <- sfClusterApplyLB(1:n.simu, get_perf_3M_par
-                             , dir
-                             , lasso_rf_iters 
-                             , recall_tar
-                             , fileNm_3M
-                             , path_3M, 
-                             nonhaeFile,
-                             haeFile
-    )
-    sfStop()
-    
-#     get_perf_3M_par(1, dir, lasso_rf_iters, recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile)
+run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, 
+                        fileNm_3M, path_3M, haeFile, nonhaeFile){
+  
+  dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+  
+  trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
+  if(!dir.exists(trace_path)) 
+    dir.create(trace_path, showWarnings = T, recursive = TRUE)
+  
+  traceFile <- paste0(trace_path, 'traceFile_pred3M.csv')
+  cat(file=traceFile, append=T, 'parallele on n.simu simulation start!\n')
+  
+  sfInit(parallel=TRUE, cpus=n.simu, type='SOCK')
+  #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
+  
+  cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
+  sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", "lasso_rf_iters",
+           "recall_tar", "fileNm_3M", "path_3M")
+  sfExport('get_perf_3M_par', 'msOnTest_sep_v2')
+  
+  sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
+  # Auxiliary functions
+  sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
+  # 
+  sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
+  
+  sfClusterEval(library(ggplot2))
+  sfClusterEval(library(ROCR))
+  sfClusterEval(library(PRROC))
+  # sfClusterEval(library(FSelector))
+  sfClusterEval(library(randomForest))
+  sfClusterEval(library(caret))
+  sfClusterEval(library(e1071))
+  sfClusterEval(library(reshape2))
+  sfClusterEval(library(sqldf))
+  sfClusterEval(library(glmnet))
+  sfClusterEval(library(caTools))
+  # sfClusterEval(library(gbm))
+  # sfClusterEval(library(xlsx))
+  sfClusterEval(library(dplyr))    
+  ################################################################################
+  # Lichao: 
+  # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
+  ################################################################################
+  temp <- sfClusterApplyLB(1:n.simu, get_perf_3M_par, dir, lasso_rf_iters, 
+                           recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile)
+  sfStop()
+  
+    # get_perf_3M_par(1, dir, lasso_rf_iters, recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile)
 #     print("get_perf_3M_par finished.")
-    ms_allSimu <- ldply(temp, quickdf)
-    
-    ################################################################################
-    # Lichao: 
-    # Previously the following line was: 
-    # write.csv(ms_allSimu, pate0(trace_path, 'perf_on3M_allSimu.csv'))
-    # It should be 'paste0' instead of 'pate0'
-    # Seriously, we need to be way more careful when coding. 
-    ################################################################################
-    write.csv(ms_allSimu, paste0(trace_path, 'perf_on3M_allSimu.csv'))
-    return(ms_allSimu)
+  ms_allSimu <- ldply(temp, quickdf)
+  
+  ################################################################################
+  # Lichao: 
+  # Previously the following line was: 
+  # write.csv(ms_allSimu, pate0(trace_path, 'perf_on3M_allSimu.csv'))
+  # It should be 'paste0' instead of 'pate0'
+  # Seriously, we need to be way more careful when coding. 
+  ################################################################################
+  write.csv(ms_allSimu, paste0(trace_path, 'perf_on3M_allSimu.csv'))
+  return(ms_allSimu)
     
 }
 
