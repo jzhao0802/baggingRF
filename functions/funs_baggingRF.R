@@ -174,8 +174,12 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
     if(!dir.exists(outDirThisSimu)) 
       dir.create(outDirThisSimu, showWarnings = T, recursive = TRUE)
     
-    save(dat_hae_trn, dat_hae_tst, dat_nonhae_trn , dat_nonhae_tst
-         , file=paste(outDirThisSimu, "dat_hae_trn_tst_split_simu", simu, ".RData", sep=""))
+    saveRDS(dat_hae_trn, file=paste0(outDirThisSimu, "dat_hae_trn_simu", simu, ".RDS"))
+    saveRDS(dat_hae_tst, file=paste0(outDirThisSimu, "dat_hae_tst_simu", simu, ".RDS"))
+    saveRDS(dat_nonhae_trn, file=paste0(outDirThisSimu, "dat_nonhae_trn_simu", simu, ".RDS"))
+    saveRDS(dat_nonhae_tst, file=paste0(outDirThisSimu, "dat_nonhae_tst_simu", simu, ".RDS"))
+#     save(dat_hae_trn, dat_hae_tst, dat_nonhae_trn , dat_nonhae_tst
+#          , file=paste(outDirThisSimu, "dat_hae_trn_tst_split_simu", simu, ".RData", sep=""))
   }
 }
 
@@ -205,7 +209,12 @@ run_bagging_rf_par_forTrainigFit <- function(simu, dir, lasso_rf_iters, nonhaeFi
   outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
     if(!dir.exists(outDir)) dir.create(outDir, showWarnings = T, recursive = TRUE)
     
-    load(paste(dataDir, "dat_hae_trn_tst_split_simu", simu, ".RData", sep=""))
+  dat_hae_trn <- readRDS(file=paste0(dataDir, "dat_hae_trn_simu", simu, ".RDS"))
+  dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
+  dat_nonhae_trn <- readRDS(file=paste0(dataDir, "dat_nonhae_trn_simu", simu, ".RDS"))
+  dat_nonhae_tst <- readRDS(file=paste0(dataDir, "dat_nonhae_tst_simu", simu, ".RDS"))
+  
+    
     
     
     #########################################################################
@@ -271,57 +280,53 @@ run_bagging_rf_par_forTrainigFit <- function(simu, dir, lasso_rf_iters, nonhaeFi
 
 run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeFile)
 {
-    dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
-    
-    trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
-    if(!dir.exists(trace_path)) dir.create(trace_path, showWarnings = T, recursive = TRUE)
-    
-    traceFile <- paste0(trace_path, 'traceFile.csv')
-    cat(file=traceFile, append=T, 'parallele on n.simu simulation start!\n')
-    #     wk_dir = "D:\\jzhao\\Shire_followup\\02_Code\\HAE_R_codes_Dec15\\"
-    
-    sfInit(parallel=TRUE, cpus=n.simu, type='SOCK')
-    #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
-    
-    cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
-    sfExport(  'dir', 'wk_dir', "nonhaeFile", "haeFile")
-    sfExport('undbag_lasso_rf'
-    )
-    
-    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
-    # Auxiliary functions
-    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
-    # 
-    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
-    
-    sfClusterEval(library(ggplot2))
-    sfClusterEval(library(ROCR))
-    sfClusterEval(library(PRROC))
-    # sfClusterEval(library(FSelector))
-    sfClusterEval(library(randomForest))
-    sfClusterEval(library(caret))
-    sfClusterEval(library(e1071))
-    sfClusterEval(library(reshape2))
-    sfClusterEval(library(sqldf))
-    sfClusterEval(library(glmnet))
-    sfClusterEval(library(caTools))
-    # sfClusterEval(library(gbm))
-    # sfClusterEval(library(xlsx))
-    sfClusterEval(library(dplyr))   
-    ################################################################################
-    # Lichao: 
-    # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
-    ################################################################################
-    temp <- sfClusterApplyLB(1:n.simu, run_bagging_rf_par_forTrainigFit
-                             , dir
-                             , lasso_rf_iters, 
-                             nonhaeFile, 
-                             haeFile
-    )
-    #save(pred_ts_allSim, file=paste0(modelDir, '//pred_allSim.RData'))
-    sfStop()
-    # run_bagging_rf_par_forTrainigFit(1, dir, lasso_rf_iters, nonhaeFile, haeFile)
-    #     cat(unlist(lapply(pred_ts_allSim, length)), '\n')
+  dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+  
+  trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
+  if(!dir.exists(trace_path)) 
+    dir.create(trace_path, showWarnings = T, recursive = TRUE)
+  
+  traceFile <- paste0(trace_path, 'traceFile.csv')
+  cat(file=traceFile, append=T, 'parallele on n.simu simulation start!\n')
+  #     wk_dir = "D:\\jzhao\\Shire_followup\\02_Code\\HAE_R_codes_Dec15\\"
+  
+  sfInit(parallel=TRUE, cpus=n.simu, type='SOCK')
+  #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
+  
+  cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
+  sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile")
+  sfExport('undbag_lasso_rf')
+  
+  sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
+  # Auxiliary functions
+  sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
+  # 
+  sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
+  
+  sfClusterEval(library(ggplot2))
+  sfClusterEval(library(ROCR))
+  sfClusterEval(library(PRROC))
+  # sfClusterEval(library(FSelector))
+  sfClusterEval(library(randomForest))
+  sfClusterEval(library(caret))
+  sfClusterEval(library(e1071))
+  sfClusterEval(library(reshape2))
+  sfClusterEval(library(sqldf))
+  sfClusterEval(library(glmnet))
+  sfClusterEval(library(caTools))
+  # sfClusterEval(library(gbm))
+  # sfClusterEval(library(xlsx))
+  sfClusterEval(library(dplyr))   
+  ################################################################################
+  # Lichao: 
+  # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
+  ################################################################################
+  temp <- sfClusterApplyLB(1:n.simu, run_bagging_rf_par_forTrainigFit, dir, 
+                           lasso_rf_iters, nonhaeFile, haeFile)
+  #save(pred_ts_allSim, file=paste0(modelDir, '//pred_allSim.RData'))
+  sfStop()
+  # run_bagging_rf_par_forTrainigFit(1, dir, lasso_rf_iters, nonhaeFile, haeFile)
+  #     cat(unlist(lapply(pred_ts_allSim, length)), '\n')
 }
 
 
@@ -336,7 +341,13 @@ get_perf_allSimu <- function(dir, iters, n.simu, recall_tar, haeFile, nonhaeFile
       # load(paste0(dir, "dat_hae_trn_tst_split_simu", i, ".RData"))
       # which doesn't correspond to the correct directory defined in training. 
       ################################################################################
-        load(paste0(dir, "iters=", iters, "/simu", i, "/dat_hae_trn_tst_split_simu", i, ".RData"))
+      
+      dat_hae_trn <- readRDS(file=paste0(dir, "iters=", iters, "/simu", i, "/dat_hae_trn_simu", i, ".RDS"))
+      dat_hae_tst <- readRDS(file=paste0(dir, "iters=", iters, "/simu", i, "/dat_hae_tst_simu", i, ".RDS"))
+      dat_nonhae_trn <- readRDS(file=paste0(dir, "iters=", iters, "/simu", i, "/dat_nonhae_trn_simu", i, ".RDS"))
+      dat_nonhae_tst <- readRDS(file=paste0(dir, "iters=", iters, "/simu", i, "/dat_nonhae_tst_simu", i, ".RDS"))
+      
+        # load(paste0(dir, "iters=", iters, "/simu", i, "/dat_hae_trn_tst_split_simu", i, ".RData"))
         resp <- c(dat_hae_tst$HAE, dat_nonhae_tst$HAE)
         saveRDS(resp, file = paste0(dir, "resp_simu", i, ".RData"))
         load(paste0(dir, "iters=", iters, '\\simu', i, '\\tst_rf_prob.RData'))
@@ -441,8 +452,10 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
         
     }
     
-    load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
-    rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
+    dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
+    
+    # load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
+    # rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
     gc()
     
     tst_prob_rf = rep(0, nrow(x_3M))
@@ -552,102 +565,102 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_
 }
 
 
-get_perf_2.5M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_2.5M, path_2.5M){
-    
-    outDir <- dataDir  <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
-    if(!dir.exists(outDir)){dir.create(outDir, showWarnings = T, recursive = T, model='0777')}
-
-    x_3M <- lapply(1:51, function(i) {
-        load(paste0(path_2.5M, fileNm_2.5M, '_', i, '.RData'))
-        return(adj_ppv_samp)
-    })
-    x_3M <- ldply(x_3M, rbind)
-    
-    load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
-    vars_rf <- rownames(trn_undbag_rf_fit[[1]]$importance)
-    if('LOOKBACK_DAYS' %in% vars_rf & 'lookback_days' %in% names(x_3M)){
-        x_3M <- x_3M %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-PATIENT_ID) %>% select(-lookback_days)
-        
-    }
-    load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
-    rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
-    gc()
-    
-    tst_prob_rf = rep(0, nrow(x_3M))
-    tst_prob_rf_hae = rep(0, nrow(dat_hae_tst)) #218
-    
-    Sys.time()->start
-    
-    # Bagging LASSO, Bagging Random Forest
-    for (i in 1:lasso_rf_iters){
-        # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters
-        cat('i=', i, '!\n')
-        tst_prob_rf = tst_prob_rf + predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
-        tst_prob_rf_hae = tst_prob_rf_hae + predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID'), names(dat_hae_tst))], type = "prob")[,2]/lasso_rf_iters
-    }
-    
-    print(Sys.time()-start)
-    # Time difference of 12.26336 mins
-    
-    save( tst_prob_rf_hae, tst_prob_rf, file=paste(outDir, "tst_rf_prob_haeTs&2.5M.RData", sep=""))
-    
-    resp <- c(rep(1, length(tst_prob_rf_hae)), rep(0, length(tst_prob_rf)))
-    
-    pred <- c(tst_prob_rf_hae, tst_prob_rf)
-    
-    perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
-    write.csv(perf_result$ms, paste0(outDir, 'perf_on2.5M.csv'))
-    result <- c(simu=simu, perf_result$ms)
-    return(result)
-}
-
-run_perf_2.5M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_2.5M, path_2.5M){
-    trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
-    # if(!dir.exists(trace_path)) dir.create(trace_path, showWarnings = T, recursive = TRUE)
-    
-    traceFile <- paste0(trace_path, 'traceFile_pred2.5M.csv')
-    cat(file=traceFile, append=T, 'parallele on n.simu simulation start!\n')
-    #     wk_dir = "D:\\jzhao\\Shire_followup\\02_Code\\HAE_R_codes_Dec15\\"
-    
-    sfInit(parallel=TRUE, cpus=n.simu, type='SOCK')
-    #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
-    
-    cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
-    sfExport(  'outDir', 'wk_dir')
-    sfExport('get_perf_2.5M_par', 'msOnTest_sep_v2'
-    )
-    
-    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
-    # Auxiliary functions
-    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
-    # 
-    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
-    
-    sfClusterEval(library(ggplot2))
-    sfClusterEval(library(ROCR))
-    sfClusterEval(library(PRROC))
-    # sfClusterEval(library(FSelector))
-    sfClusterEval(library(randomForest))
-    sfClusterEval(library(caret))
-    sfClusterEval(library(e1071))
-    sfClusterEval(library(reshape2))
-    sfClusterEval(library(sqldf))
-    sfClusterEval(library(glmnet))
-    sfClusterEval(library(caTools))
-    # sfClusterEval(library(gbm))
-    # sfClusterEval(library(xlsx))
-    sfClusterEval(library(dplyr))    
-    temp <- sfClusterApplyLB(1:n.simu, get_perf_2.5M_par
-                             , dir
-                             , lasso_rf_iters 
-                             , recall_tar
-                             , fileNm_2.5M
-                             , path_2.5M
-    )
-    sfStop()
-    
-    ms_allSimu <- ldply(temp, quickdf)
-    
-    return(ms_allSimu)
-    
-}
+# get_perf_2.5M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_2.5M, path_2.5M){
+#     
+#     outDir <- dataDir  <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
+#     if(!dir.exists(outDir)){dir.create(outDir, showWarnings = T, recursive = T, model='0777')}
+# 
+#     x_3M <- lapply(1:51, function(i) {
+#         load(paste0(path_2.5M, fileNm_2.5M, '_', i, '.RData'))
+#         return(adj_ppv_samp)
+#     })
+#     x_3M <- ldply(x_3M, rbind)
+#     
+#     load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
+#     vars_rf <- rownames(trn_undbag_rf_fit[[1]]$importance)
+#     if('LOOKBACK_DAYS' %in% vars_rf & 'lookback_days' %in% names(x_3M)){
+#         x_3M <- x_3M %>% mutate(LOOKBACK_DAYS=lookback_days) %>% select(-PATIENT_ID) %>% select(-lookback_days)
+#         
+#     }
+#     load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
+#     rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
+#     gc()
+#     
+#     tst_prob_rf = rep(0, nrow(x_3M))
+#     tst_prob_rf_hae = rep(0, nrow(dat_hae_tst)) #218
+#     
+#     Sys.time()->start
+#     
+#     # Bagging LASSO, Bagging Random Forest
+#     for (i in 1:lasso_rf_iters){
+#         # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters
+#         cat('i=', i, '!\n')
+#         tst_prob_rf = tst_prob_rf + predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
+#         tst_prob_rf_hae = tst_prob_rf_hae + predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID'), names(dat_hae_tst))], type = "prob")[,2]/lasso_rf_iters
+#     }
+#     
+#     print(Sys.time()-start)
+#     # Time difference of 12.26336 mins
+#     
+#     save( tst_prob_rf_hae, tst_prob_rf, file=paste(outDir, "tst_rf_prob_haeTs&2.5M.RData", sep=""))
+#     
+#     resp <- c(rep(1, length(tst_prob_rf_hae)), rep(0, length(tst_prob_rf)))
+#     
+#     pred <- c(tst_prob_rf_hae, tst_prob_rf)
+#     
+#     perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
+#     write.csv(perf_result$ms, paste0(outDir, 'perf_on2.5M.csv'))
+#     result <- c(simu=simu, perf_result$ms)
+#     return(result)
+# }
+# 
+# run_perf_2.5M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_2.5M, path_2.5M){
+#     trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
+#     # if(!dir.exists(trace_path)) dir.create(trace_path, showWarnings = T, recursive = TRUE)
+#     
+#     traceFile <- paste0(trace_path, 'traceFile_pred2.5M.csv')
+#     cat(file=traceFile, append=T, 'parallele on n.simu simulation start!\n')
+#     #     wk_dir = "D:\\jzhao\\Shire_followup\\02_Code\\HAE_R_codes_Dec15\\"
+#     
+#     sfInit(parallel=TRUE, cpus=n.simu, type='SOCK')
+#     #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
+#     
+#     cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
+#     sfExport(  'outDir', 'wk_dir')
+#     sfExport('get_perf_2.5M_par', 'msOnTest_sep_v2'
+#     )
+#     
+#     sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
+#     # Auxiliary functions
+#     sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
+#     # 
+#     sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
+#     
+#     sfClusterEval(library(ggplot2))
+#     sfClusterEval(library(ROCR))
+#     sfClusterEval(library(PRROC))
+#     # sfClusterEval(library(FSelector))
+#     sfClusterEval(library(randomForest))
+#     sfClusterEval(library(caret))
+#     sfClusterEval(library(e1071))
+#     sfClusterEval(library(reshape2))
+#     sfClusterEval(library(sqldf))
+#     sfClusterEval(library(glmnet))
+#     sfClusterEval(library(caTools))
+#     # sfClusterEval(library(gbm))
+#     # sfClusterEval(library(xlsx))
+#     sfClusterEval(library(dplyr))    
+#     temp <- sfClusterApplyLB(1:n.simu, get_perf_2.5M_par
+#                              , dir
+#                              , lasso_rf_iters 
+#                              , recall_tar
+#                              , fileNm_2.5M
+#                              , path_2.5M
+#     )
+#     sfStop()
+#     
+#     ms_allSimu <- ldply(temp, quickdf)
+#     
+#     return(ms_allSimu)
+#     
+# }
