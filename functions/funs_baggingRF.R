@@ -87,9 +87,8 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
   # Lichao: 
   # This line was  
   # HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))
-  # but there was not such a RDS file at all! I had to create such an RDS file 
+  # but there was not such a RDS file at all! Now I have created such an RDS file 
   # in order to execute the code. 
-  # Seriously, we need to be way more careful when coding. 
   ################################################################################
   HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))
   ################################################################################
@@ -473,7 +472,14 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
     
     pred <- c(tst_prob_rf_hae, tst_prob_rf)
     
-    perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05), outDir)
+    ################################################################################
+    # Lichao: 
+    # Previously the following line was: 
+    # perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05), oudDir)
+    # But function msOnTest_sep_v2 doesn't has a parameter 'outDir'. This is also 
+    # inconsistent with other places where the same function is called. 
+    ################################################################################
+    perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
     write.csv(perf_result$ms, paste0(outDir, 'perf_on3M.csv'))
     result <- c(simu=simu, perf_result$ms)
     return(result)
@@ -537,7 +543,14 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, fileNm_
 #     print("get_perf_3M_par finished.")
     ms_allSimu <- ldply(temp, quickdf)
     
-    write.csv(ms_allSimu, pate0(trace_path, 'perf_on3M_allSimu.csv'))
+    ################################################################################
+    # Lichao: 
+    # Previously the following line was: 
+    # write.csv(ms_allSimu, pate0(trace_path, 'perf_on3M_allSimu.csv'))
+    # It should be 'paste0' instead of 'pate0'
+    # Seriously, we need to be way more careful when coding. 
+    ################################################################################
+    write.csv(ms_allSimu, paste0(trace_path, 'perf_on3M_allSimu.csv'))
     return(ms_allSimu)
     
 }
