@@ -545,7 +545,6 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   }
   
   print(Sys.time()-start)
-  print("preds finished")
   # Time difference of 12.26336 mins
   
   ################################################################################
@@ -562,7 +561,6 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   resp_pred <- cbind(resp, pred)
   colnames(resp_pred) <- c("resp", "prob")
   saveRDS(resp_pred, file=paste0(outDir, "tst_rf_prob_haeTs&3M.RDS"))
-  print("df saved")
   
   ################################################################################
   # Lichao: 
@@ -572,7 +570,6 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   # inconsistent with other places where the same function is called. 
   ################################################################################
   perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
-  print("msOnTest_sep_v2 finished")
   write.csv(perf_result$ms, paste0(outDir, 'perf_on3M.csv'))
   result <- c(simu=simu, perf_result$ms)
   return(result)

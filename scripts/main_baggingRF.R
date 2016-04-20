@@ -57,8 +57,6 @@ run_bagging_rf(n.simu=main.n.simu, wk_dir=main.wk_dir, dir=main.outDir,
 cat((proc.time()-main.t0)[3]/60, '!\n')
 print("run_bagging_rf finished. ")
 
-# main.outDir <- "F:/Lichao/work/Projects/HAE/code/R/GoFromBaggingForest/Results/2016-04-19 18.07.52/"
-
 main.perf_new200_1233_iter200 <- 
   get_perf_allSimu(dir=main.outDir, iters=main.iters, n.simu=main.n.simu, 
                    recall_tar=main.recall_tar, nonhaeFile=main.nonhaeFile, 
