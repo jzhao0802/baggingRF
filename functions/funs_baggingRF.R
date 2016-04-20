@@ -197,7 +197,8 @@ run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, it
 
 # run the bagging forest model
 
-run_bagging_rf_par_forTrainigFit <- function(simu, dir, lasso_rf_iters, nonhaeFile, haeFile)
+run_bagging_rf_par_forTrainigFit <- 
+  function(simu, dir, lasso_rf_iters, nonhaeFile, haeFile)
 {
   ################################################################################
   # Lichao: 
@@ -206,8 +207,10 @@ run_bagging_rf_par_forTrainigFit <- function(simu, dir, lasso_rf_iters, nonhaeFi
   # and this shouldn't be there since the same was done in the function that
   # calls this one. Otherwise the directory won't be correct. 
   ################################################################################
+    
   outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
-    if(!dir.exists(outDir)) dir.create(outDir, showWarnings = T, recursive = TRUE)
+  if(!dir.exists(outDir)) 
+    dir.create(outDir, showWarnings = T, recursive = TRUE)
     
   dat_hae_trn <- readRDS(file=paste0(dataDir, "dat_hae_trn_simu", simu, ".RDS"))
   dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
@@ -217,63 +220,83 @@ run_bagging_rf_par_forTrainigFit <- function(simu, dir, lasso_rf_iters, nonhaeFi
     
     
     
-    #########################################################################
-    ### Model training (all training data)
-    #########################################################################
-    
-    Sys.time()->start
-    
-    # (1) Underbagging LASSO / Random Forest
-    trn_ans_lasso_rf = undbag_lasso_rf(rf_formula=NA, dat_pos=dat_hae_trn, dat_neg=dat_nonhae_trn, iters=lasso_rf_iters, mtry=25, ntree=300)
-    # trn_undbag_lasso_fit = trn_ans_lasso_rf$undbag_lasso_fit
-    trn_undbag_rf_fit = trn_ans_lasso_rf$undbag_rf_fit
-    
-    print(Sys.time()-start)
-    
-    save(dat_hae_trn, dat_nonhae_trn, trn_undbag_rf_fit, file=paste(outDir, "trn_rf_fit_Mar31.RData", sep=""))
-    
-    
-    #########################################################################
-    ### Apply all-training model to testing data
-    #########################################################################
+  #########################################################################
+  ### Model training (all training data)
+  #########################################################################
+  
+  Sys.time()->start
+  
+  # (1) Underbagging LASSO / Random Forest
+  trn_ans_lasso_rf <- 
+    undbag_lasso_rf(rf_formula=NA, dat_pos=dat_hae_trn, dat_neg=dat_nonhae_trn, 
+                    iters=lasso_rf_iters, mtry=25, ntree=300)
+  # trn_undbag_lasso_fit = trn_ans_lasso_rf$undbag_lasso_fit
+  trn_undbag_rf_fit = trn_ans_lasso_rf$undbag_rf_fit
+  
+  print(Sys.time()-start)
+  
+  #
+  saveRDS(trn_undbag_rf_fit, file=paste0(outDir, "trn_rf_fit.RDS"))
+  
+  # save(dat_hae_trn, dat_nonhae_trn, trn_undbag_rf_fit, file=paste(outDir, "trn_rf_fit_Mar31.RData", sep=""))
+  
+  
+  #########################################################################
+  ### Apply all-training model to testing data
+  #########################################################################
 
-    x_hae_trn = dat_hae_trn[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
-    y_hae_trn = dat_hae_trn[,match('HAE', names(dat_hae_trn))]
-    x_hae_tst = dat_hae_tst[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
-    y_hae_tst = dat_hae_tst[,match('HAE', names(dat_hae_trn))]
-    
-    dat_nonhae_trn$HAE <- 0
-    dat_nonhae_tst$HAE <- 0
-    
-    x_nonhae_trn = dat_nonhae_trn[,-match(grep('patient_id|hae', names(dat_nonhae_trn), valu=T, perl=T, ignore.case = T)
-                                          , names(dat_nonhae_trn))]
-    y_nonhae_trn = dat_nonhae_trn[,match('HAE', names(dat_nonhae_trn))]
-    x_nonhae_tst = dat_nonhae_tst[,-match(grep('patient_id|hae', names(dat_nonhae_tst), valu=T, perl=T, ignore.case = T)
-                                          , names(dat_nonhae_tst))]
-    y_nonhae_tst = dat_nonhae_tst[,match('HAE', names(dat_nonhae_tst))]
-    
-    x_nonhae_tst <- x_nonhae_tst[, match(names(x_hae_tst), names(x_nonhae_tst))]
-    x_nonhae_trn <- x_nonhae_trn[, match(names(x_hae_trn), names(x_nonhae_trn))]
-    x_tst = rbind(x_hae_tst, x_nonhae_tst)
-    y_tst = c(y_hae_tst, y_nonhae_tst)
-    dat_tst = data.frame(y_tst, x_tst)
-    names(dat_tst)[1]='HAE'
-    
-    tst_label = y_tst
-    
-    tst_prob_rf = rep(0, length(y_tst))
-    
-    Sys.time()->start
-    
-    # Bagging LASSO, Bagging Random Forest
-    for (i in 1:lasso_rf_iters){
-        tst_prob_rf = tst_prob_rf + predict(trn_undbag_rf_fit[[i]], dat_tst[, -match('HAE', names(dat_tst))], type = "prob")[,2]/lasso_rf_iters
-    }
-    
-    print(Sys.time()-start)
-    # Time difference of 12.26336 mins
-    
-    save(tst_label, tst_prob_rf, file=paste(outDir, "tst_rf_prob.RData", sep=""))
+  x_hae_trn <- dat_hae_trn[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
+  y_hae_trn <- dat_hae_trn[,match('HAE', names(dat_hae_trn))]
+  x_hae_tst <- dat_hae_tst[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
+  y_hae_tst <- dat_hae_tst[,match('HAE', names(dat_hae_trn))]
+  
+  dat_nonhae_trn$HAE <- 0
+  dat_nonhae_tst$HAE <- 0
+  
+  x_nonhae_trn <- dat_nonhae_trn[
+    , -match(grep('patient_id|hae', names(dat_nonhae_trn), valu=T, perl=T, ignore.case=T), 
+             names(dat_nonhae_trn))
+    ]
+  y_nonhae_trn <- dat_nonhae_trn[,match('HAE', names(dat_nonhae_trn))]
+  x_nonhae_tst <- dat_nonhae_tst[
+    , -match(grep('patient_id|hae', names(dat_nonhae_tst), valu=T, perl=T, ignore.case = T), 
+             names(dat_nonhae_tst))
+    ]
+  y_nonhae_tst = dat_nonhae_tst[,match('HAE', names(dat_nonhae_tst))]
+  
+  x_nonhae_tst <- x_nonhae_tst[, match(names(x_hae_tst), names(x_nonhae_tst))]
+  x_nonhae_trn <- x_nonhae_trn[, match(names(x_hae_trn), names(x_nonhae_trn))]
+  x_tst <- rbind(x_hae_tst, x_nonhae_tst)
+  y_tst <- c(y_hae_tst, y_nonhae_tst)
+  dat_tst <- data.frame(y_tst, x_tst)
+  names(dat_tst)[1]='HAE'
+  
+  tst_label <- y_tst
+  
+  tst_prob_rf <- rep(0, length(y_tst))
+  
+  Sys.time()->start
+  
+  # Bagging LASSO, Bagging Random Forest
+  for (i in 1:lasso_rf_iters){
+    tst_prob_rf <- tst_prob_rf + 
+      predict(trn_undbag_rf_fit[[i]], dat_tst[, -match('HAE', names(dat_tst))], type = "prob")[,2]/lasso_rf_iters
+  }
+  
+  print(Sys.time()-start)
+  # Time difference of 12.26336 mins
+  
+  ################################################################################
+  # Lichao: 
+  # Previously responses and predictions are saved saparately, which leads to
+  # later loading training + testing data all over again just for combining
+  # the responses and predictions. 
+  # Now they're combined in this function. 
+  ################################################################################
+  result <- cbind(tst_label, tst_prob_rf)
+  colnames(result) <- c("resp", "prob")
+  saveRDS(result, file=paste0(outDir, "tst_rf_prob.RDS"))
+  # save(tst_label, tst_prob_rf, file=paste(outDir, "tst_rf_prob.RData", sep=""))
     
 }
 
@@ -329,38 +352,61 @@ run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeF
   #     cat(unlist(lapply(pred_ts_allSim, length)), '\n')
 }
 
+################################################################################
+# Lichao: 
+# Previously the following function was defined inside of lapply in get_perf_allSimu, 
+# which is not recommended. 
+################################################################################
 
+ConcatenatePreds <- function(simu, dir, iters)
+{
+  ################################################################################
+  # Lichao: 
+  # Previously there was this line: 
+  # load(paste0(dir, "dat_hae_trn_tst_split_simu", i, ".RData"))
+  # which doesn't correspond to the correct directory defined in training. 
+  ################################################################################
+  
+  ################################################################################
+  # Lichao: 
+  # Previously there were also lines reading training and testing data. 
+  # 1. Loading training data is definitely not needed. This is why we don't want
+  #    to save multiple datasets in one RData file. 
+  # 2. Loading testing data is also not necessary because it was for generating
+  #    the responses, which now has been saved with the predictions in run_bagging_rf_par_forTrainigFit
+  ################################################################################
+  
+  ################################################################################
+  # Lichao: 
+  # Previously the following line was
+  # saveRDS(resp, file = paste0(dir, "resp_simu", simu, ".RData"))
+  # which despite using saveRDS, the target file has an extention of .RData. 
+  # Also I don't think it's necessary to save a separate file of resp_simu? 
+  ################################################################################
+  # saveRDS(resp, file = paste0(dir, "resp_simu", simu, ".RDS"))
+  tst_prob_rf <- readRDS(paste0(dir, "iters=", iters, "\\simu", simu, "\\tst_rf_prob.RDS"))
+  
+  return(tst_prob_rf)
+}
 
 get_perf_allSimu <- function(dir, iters, n.simu, recall_tar, haeFile, nonhaeFile){
-    dir <- paste0(dir, nonhaeFile, '&', haeFile, '/')
-    
-    temp <- lapply(1:n.simu, function(i){
-      ################################################################################
-      # Lichao: 
-      # Previously there was this line: 
-      # load(paste0(dir, "dat_hae_trn_tst_split_simu", i, ".RData"))
-      # which doesn't correspond to the correct directory defined in training. 
-      ################################################################################
-      
-      dat_hae_trn <- readRDS(file=paste0(dir, "iters=", iters, "/simu", i, "/dat_hae_trn_simu", i, ".RDS"))
-      dat_hae_tst <- readRDS(file=paste0(dir, "iters=", iters, "/simu", i, "/dat_hae_tst_simu", i, ".RDS"))
-      dat_nonhae_trn <- readRDS(file=paste0(dir, "iters=", iters, "/simu", i, "/dat_nonhae_trn_simu", i, ".RDS"))
-      dat_nonhae_tst <- readRDS(file=paste0(dir, "iters=", iters, "/simu", i, "/dat_nonhae_tst_simu", i, ".RDS"))
-      
-        # load(paste0(dir, "iters=", iters, "/simu", i, "/dat_hae_trn_tst_split_simu", i, ".RData"))
-        resp <- c(dat_hae_tst$HAE, dat_nonhae_tst$HAE)
-        saveRDS(resp, file = paste0(dir, "resp_simu", i, ".RData"))
-        load(paste0(dir, "iters=", iters, '\\simu', i, '\\tst_rf_prob.RData'))
-        resp_pred <- data.frame(resp=resp, pred=tst_prob_rf)
-        return(resp_pred)
-    })
-    
-    resp_pred <- ldply(temp, rbind)
-    saveRDS(resp_pred, paste0(dir, 'iters=', iters, '\\resp_pred.RData'))
-    temp1 <- msOnTest_sep_v2(resp_pred[, 2], resp_pred[, 1], recall_tar)
-    perf <- temp1$ms
-    write.csv(perf, paste0(dir, 'iters=', iters, '\\performance_onAllSimu.csv'))
-    return(perf)
+  
+  dir <- paste0(dir, nonhaeFile, '&', haeFile, '/')
+  
+  temp <- lapply(1:n.simu, ConcatenatePreds, dir=dir, iters=iters)
+  
+  resp_pred <- ldply(temp, rbind)
+  ################################################################################
+  # Lichao: 
+  # Previously the following line was
+  # saveRDS(resp_pred, paste0(dir, 'iters=', iters, '\\resp_pred.RData'))
+  # which despite using saveRDS, the target file has an extention of .RData. 
+  ################################################################################
+  saveRDS(resp_pred, paste0(dir, 'iters=', iters, '\\resp_pred.RDS'))
+  temp1 <- msOnTest_sep_v2(resp_pred[, 2], resp_pred[, 1], recall_tar)
+  perf <- temp1$ms
+  write.csv(perf, paste0(dir, 'iters=', iters, '\\performance_onAllSimu.csv'))
+  return(perf)
 }
 
 
@@ -464,12 +510,13 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
     Sys.time()->start
     
     # Bagging LASSO, Bagging Random Forest
-    load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
+    trn_undbag_rf_fit <- readRDS(file=paste0(dataDir, 'trn_rf_fit.RDS'))
+    # load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
     for (i in 1:lasso_rf_iters){
-        # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters
-        cat('i=', i, '!\n')
-        tst_prob_rf = tst_prob_rf + predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
-        tst_prob_rf_hae = tst_prob_rf_hae + predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID'), names(dat_hae_tst))], type = "prob")[,2]/lasso_rf_iters
+      # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters
+      cat('i=', i, '!\n')
+      tst_prob_rf = tst_prob_rf + predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
+      tst_prob_rf_hae = tst_prob_rf_hae + predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID'), names(dat_hae_tst))], type = "prob")[,2]/lasso_rf_iters
     }
     
     print(Sys.time()-start)
