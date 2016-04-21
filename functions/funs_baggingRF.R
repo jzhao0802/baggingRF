@@ -150,7 +150,15 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
   # outDir <- paste0(outDir, nonhaeFile, '&', haeFile, '\\')
   # which was not compatible to code in other functions that reads data from the dir
   ################################################################################
-  outDir <- paste0(outDir, nonhaeFile, '&', haeFile, '/iters=', iters, "/")
+  
+  ################################################################################
+  # Jie: 
+  # code back to the following line. because models with different iterations share
+  # the same model data.
+  # outDir <- paste0(outDir, nonhaeFile, '&', haeFile, '\\')
+  ################################################################################
+  
+  outDir <- paste0(outDir, nonhaeFile, '&', haeFile, "/")
   if(!dir.exists(outDir)) 
     dir.create(outDir, showWarnings = T, recursive = TRUE)
   
@@ -184,14 +192,14 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
     dat_nonhae_trn$HAE <- 0
     dat_nonhae_tst$HAE <- 0
     
-    outDirThisSimu <- paste0(outDir, "simu", simu, "/")
-    if(!dir.exists(outDirThisSimu)) 
-      dir.create(outDirThisSimu, showWarnings = T, recursive = TRUE)
+#     outDirThisSimu <- paste0(outDir, "simu", simu, "/")
+    if(!dir.exists(outDir)) 
+      dir.create(outDir, showWarnings = T, recursive = TRUE)
     
-    saveRDS(dat_hae_trn, file=paste0(outDirThisSimu, "dat_hae_trn_simu", simu, ".RDS"))
-    saveRDS(dat_hae_tst, file=paste0(outDirThisSimu, "dat_hae_tst_simu", simu, ".RDS"))
-    saveRDS(dat_nonhae_trn, file=paste0(outDirThisSimu, "dat_nonhae_trn_simu", simu, ".RDS"))
-    saveRDS(dat_nonhae_tst, file=paste0(outDirThisSimu, "dat_nonhae_tst_simu", simu, ".RDS"))
+    saveRDS(dat_hae_trn, file=paste0(outDir, "dat_hae_trn_simu", simu, ".RDS"))
+    saveRDS(dat_hae_tst, file=paste0(outDir, "dat_hae_tst_simu", simu, ".RDS"))
+    saveRDS(dat_nonhae_trn, file=paste0(outDir, "dat_nonhae_trn_simu", simu, ".RDS"))
+    saveRDS(dat_nonhae_tst, file=paste0(outDir, "dat_nonhae_tst_simu", simu, ".RDS"))
 #     save(dat_hae_trn, dat_hae_tst, dat_nonhae_trn , dat_nonhae_tst
 #          , file=paste(outDirThisSimu, "dat_hae_trn_tst_split_simu", simu, ".RData", sep=""))
   }
@@ -221,15 +229,21 @@ run_bagging_rf_par_forTrainigFit <-
   # and this shouldn't be there since the same was done in the function that
   # calls this one. Otherwise the directory won't be correct. 
   ################################################################################
-    
-  outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
+ 
+      ################################################################################
+      # Jie: 
+      # read in the model data using dir instead of outDir to correspond to the split step
+      # & there is no need to define the dataDir in line 239
+      ################################################################################
+      
+  outDir  <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
   if(!dir.exists(outDir)) 
     dir.create(outDir, showWarnings = T, recursive = TRUE)
     
-  dat_hae_trn <- readRDS(file=paste0(dataDir, "dat_hae_trn_simu", simu, ".RDS"))
-  dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
-  dat_nonhae_trn <- readRDS(file=paste0(dataDir, "dat_nonhae_trn_simu", simu, ".RDS"))
-  dat_nonhae_tst <- readRDS(file=paste0(dataDir, "dat_nonhae_tst_simu", simu, ".RDS"))
+  dat_hae_trn <- readRDS(file=paste0(dir, "dat_hae_trn_simu", simu, ".RDS"))
+  dat_hae_tst <- readRDS(file=paste0(dir, "dat_hae_tst_simu", simu, ".RDS"))
+  dat_nonhae_trn <- readRDS(file=paste0(dir, "dat_nonhae_trn_simu", simu, ".RDS"))
+  dat_nonhae_tst <- readRDS(file=paste0(dir, "dat_nonhae_tst_simu", simu, ".RDS"))
   
     
     
