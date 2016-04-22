@@ -4,6 +4,7 @@
 # main function for running bagging forest and performance
 rm(list=ls())
 # R work directory
+setwd("F:\\Jie\\Shire_follow_up\\02_Code\\GoFromBaggingForest\\")
 wk_dir = "./"
 
 # Setup R work directory
