@@ -125,14 +125,14 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
       nonhae$hae_patient_id <- as.numeric(nonhae$hae_patient_id)
       nonhae$GENDERM <- ifelse(nonhae$GENDER=='M', 1, 0)
       nonhae$GENDER <- NULL
-  }else if(grepl('nonhae_200K', nonhaeFile, ignore.case = T)){
+  }else if(grepl('nonhae_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
       dat_nonhae <- 
         read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
                    sep=',', stringsAsFactors = F, head=T)
       nonhae <- dat_nonhae %>% 
         mutate(LOOKBACK_DAYS=lookback_days) %>% 
         select(-c(lookback_days))
-  }else if(grepl('300K', nonhaeFile, ignore.case = T)){
+  }else if(grepl('300K|nonhae_A_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
       dat_nonhae <- 
         read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
                    sep=',', stringsAsFactors = F, head=T)
@@ -166,7 +166,7 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
   
   for (simu in 1:n.simu)
   {
-    if(nonhaeFile=='for_new300K'){
+    if(grepl('300K|nonhae_A_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
       ################################################################################
       # Lichao: 
       # tr_idx <- createFolds(hae$PATIENT_ID, 5, returnTrain=T)[[simu]]

@@ -1,6 +1,8 @@
 # main function for running bagging forest and performance
 rm(list=ls())
 
+setwd("F:\\Jie\\Shire_follow_up\\02_Code\\GoFromBaggingForest\\")
+wk_dir = "./"
 
 source("scripts/loadpackage.R")
 # Load R packages
