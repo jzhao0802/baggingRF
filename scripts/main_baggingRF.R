@@ -1,8 +1,6 @@
 # main function for running bagging forest and performance
 rm(list=ls())
 
-setwd("F:\\Jie\\Shire_follow_up\\02_Code\\GoFromBaggingForest\\")
-wk_dir = "./"
 
 source("scripts/loadpackage.R")
 # Load R packages
@@ -54,15 +52,21 @@ print("run_split finished.")
 
 
 main.t0 <- proc.time()
-run_bagging_rf(n.simu=main.n.simu, wk_dir=main.wk_dir, dir=main.outDir, 
-               lasso_rf_iters=main.iters, nonhaeFile=main.nonhaeFile, haeFile=main.haeFile)
+run_bagging_rf(n.simu=main.n.simu, 
+               wk_dir=main.wk_dir, 
+               dir=main.outDir, 
+               lasso_rf_iters=main.iters, 
+               nonhaeFile=main.nonhaeFile, 
+               haeFile=main.haeFile)
 cat((proc.time()-main.t0)[3]/60, '!\n')
 print("run_bagging_rf finished. ")
 
-main.perf_new200_1233_iter200 <- 
-  get_perf_allSimu(dir=main.outDir, iters=main.iters, n.simu=main.n.simu, 
-                   recall_tar=main.recall_tar, nonhaeFile=main.nonhaeFile, 
-                   haeFile=main.haeFile)
+main.perf_new200_1233_iter200 <- get_perf_allSimu(dir=main.outDir, 
+                                                  iters=main.iters, 
+                                                  n.simu=main.n.simu, 
+                                                  recall_tar=main.recall_tar, 
+                                                  nonhaeFile=main.nonhaeFile, 
+                                                  haeFile=main.haeFile)
 print("get_perf_allSimu finished.")
 
 
