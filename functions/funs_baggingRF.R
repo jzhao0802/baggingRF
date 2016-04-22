@@ -18,6 +18,39 @@ FindPrecisionAtGivenRecall <- function(recall, rec_prec)
 }
 
 
+BucketAge <- function(data, outDir){
+    temp <- data %>%
+    {
+        print("Putting AGE into buckets..");cat("\n")
+        .
+    } %>%
+        mutate(., ageBucket=BucketAge(AGE)) %>%
+        {
+            dataLastStep <- .
+            categories <- levels(factor(dataLastStep$ageBucket))
+            for (iLevel in 1:length(categories))
+            {
+                print(paste("level", iLevel, ":", categories[iLevel]))
+                dataLastStep[, categories[iLevel]] <- 
+                    as.numeric((dataLastStep$ageBucket == categories[iLevel]))
+            }
+            select(dataLastStep, -one_of(c("ageBucket", "AGE")))
+        }
+    
+#     print("Saving the result..")
+#     write.table(data, sep=",", 
+#                 file=paste(outDir, "CleanDataB4Spliting.csv", sep=""), 
+#                 row.names=F)
+    
+    if (bTestMode)
+        print("Finished with all tests passed.")
+    else
+        print("Finished without testing")
+    return(temp)
+}
+
+
+
 msOnTest_sep_v2 <- function(pred, response, recall_tar){
   #pred <- apply(pred, 1, mean, na.rm=T)
   predobj <- prediction(pred, response)
@@ -162,6 +195,13 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
   if(!dir.exists(outDir)) 
     dir.create(outDir, showWarnings = T, recursive = TRUE)
   
+  # if age should be bucketed
+  if(BageBucket==T){
+      hae <- BucketAge(hae, outDir)
+      dat_nonhae <- BucketAge(dat_nonhae, outDir)
+  }
+  
+  
   set.seed(20)
   
   for (simu in 1:n.simu)
@@ -216,6 +256,181 @@ run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, it
 }
 
 
+selectFeature <- function(simu, resultDir){
+    dat_hae_trn <- readRDS(file=paste0(dir, "dat_hae_trn_simu", simu, ".RDS"))
+    dat_nonhae_trn <- readRDS(file=paste0(dir, "dat_nonhae_trn_simu", simu, ".RDS"))
+
+    dataB4Model1 <- bind_rows(dat_hae_trn, dat_nonhae_trn)  %>%
+        # remove constant columns
+    {
+        dataLastStep <- .
+        levels <- sapply(., function(x)length(table(x)))
+        temp2 <- .[, levels>1]
+        print(paste("Number of constant variables:", ncol(dataLastStep)-ncol(temp2)))
+        temp2
+    } %>%
+        #how about the collinear variables?
+        #     i.	Collinear variable removal (for example, whether a variable needs to be removed is determined 
+        #           using only the training + validation data, then the test data need to remove the corresponding variables);
+        
+        #         dataB4Model1 <- dataB4Model %>% 
+        #select(-matches("patient_id")) %>%
+    {
+        print("Removing collinear variables..");cat("\n")
+        .
+    } %>%
+    {
+        file_corr <- file(paste(resultDir, "colinear_vars.txt", sep=""), "w")
+        threshold <- 0.8
+        if (bTestMode)
+            collThreshold <<- threshold
+        writeLines(paste("Correlation threshold:", threshold), file_corr)
+        dataLastStep <- data.matrix(.)
+        # cor matrix
+        corrMat <- cor(dataLastStep, dataLastStep)
+        corrMat <- corrMat - diag(ncol(corrMat))
+        # write.csv(corrMat, paste0(resultDir, 'corrMat.csv'))
+        # remove one variable of the correlated pair
+        vars2Remove <- NULL
+        for (iVar in 1:(ncol(dataLastStep)-1))
+        {
+            
+            thisVar <- colnames(dataLastStep)[iVar]
+            if (thisVar %in% vars2Remove)
+                next
+            for (jVar in (iVar+1):ncol(dataLastStep))
+            {
+                if (colnames(dataLastStep)[jVar] %in% vars2Remove)
+                    next
+                if (abs(corrMat[iVar, jVar]) >= threshold)
+                {
+                    var_pair <- colnames(dataLastStep)[c(ivar, jvar)]
+                    bMatch1 <- grepl('afreq$', var_pair, ignore.case = T, perl=T)
+                    bMatch2 <- grepl('_freq$', var_pair, ignore.case = T, perl=T)
+                    if(any(bMatch1==T) & any(bMatch2==T)){
+                        
+                        afreq_var <- var_pair[bMatch1]
+                        prefix <- gsub('(\\w+\\d*)(_freq$)', '\\1', afreq_var, perl=T, ignore.case = T)
+                        if(regexpr(prefix, var_pair[bMatch2])==T){
+                            vars2Remove <- c(vars2Remove, var_pair[bMatch2])    
+                        }
+                        
+                    }
+                    vars2Remove <- c(vars2Remove, colnames(dataLastStep)[jVar])
+                    writeLines(paste(colnames(dataLastStep)[iVar], 
+                                     "is correlated with", 
+                                     colnames(dataLastStep)[jVar], 
+                                     ":", corrMat[iVar, jVar]), file_corr)
+                }
+                
+            }
+        }
+        
+        writeLines("vars2Remove due to collinearity:", file_corr)
+        writeLines(paste(vars2Remove,collapse=","), file_corr)
+        
+        close(file_corr)
+        if (!is.null(vars2Remove))
+            select(., -one_of(vars2Remove))
+        else
+            .
+    } %>%
+        #TEST     
+    {
+        if (bTestMode)
+        {
+            dataLastStep <- data.matrix(.)
+            corrMat <- cor(dataLastStep, dataLastStep)
+            corrMat <- corrMat - diag(ncol(corrMat))
+            if (max(abs(corrMat)) >= collThreshold)
+                stop("Test Failed! Colliear variables are not completely removed.")
+            .
+        } else
+            .
+    } 
+    #ENDTEST
+    
+    # cap variables with extreme values selected by Nadea
+    #     ii.	Cap extreme values;
+    data_cap <- dataB4Model1 %>%       
+    {
+        print("Capping extreme values..");cat("\n")
+        .
+    } %>%
+    {
+        #       vars2Cap <- read.csv("vars2cap.csv", header=F, 
+        #                             sep=",", colClasses="character")
+        #         vars2Cap1 <- colnames(.)[grepl("FREQ", colnames(.))]
+        vars2Cap1 <- colnames(.)[-grepl("region|age|gender|lookback|_flag$", colnames(.), ignore.case = T, perl=T)]
+        #       print(paste("num of vars2Cap:", length(vars2Cap)))
+        #       print("colnames(.):")
+        #       print(colnames(.))
+        flag <- sapply(.[, vars2Cap1], function(x)length(x[.$HAE==1][x[.$HAE==1]>0])>0)
+        vars2Cap <- vars2Cap1[flag == TRUE]
+        dataLastStep <- .
+        if (bTestMode)
+            dataB4Capping <<- .
+        #       apply(select(., one_of(vars2Cap[,1])), 
+        #             2, PrintMaxAndPercentile, percentile=99)
+        
+        # compute 99% percentile
+        capping_vct_onPos <<- sapply(dataLastStep[, vars2Cap], function(x)CapPercentile2(x, Hae=dataLastStep$HAE, percentile=99))
+        names(capping_vct_onPos) <- gsub("(.+)(\\.99%)", "\\1", names(capping_vct_onPos), perl=T)
+        
+        #         save(capping_vct_onPos, file=paste0(resultDir, 'capping_vct_onPos.RData'))
+        dataMutated <- 
+            mutate_each(dataLastStep, funs(CapPercentile(., Hae=dataLastStep$HAE, percentile = 99)), 
+                        one_of(vars2Cap))
+        
+        #         dataMutated <- dataLastStep %>% 
+        #             select(., one_of(vars2Cap)) %>%
+        #             mutate_each(funs(CapPercentile(., Hae=dataLastStep$HAE, percentile = 99)))
+        #         
+        # print(paste("after mutate max(ER_AFREQ):", max(dataMutated$ER_AFREQ)))
+        # print("after mutation")
+        #       apply(select(dataMutated, one_of(vars2Cap[,1])), 
+        #             2, PrintMaxAndPercentile, percentile=99)
+        dataMutated
+    } %>%
+        #TEST     
+    {
+        if (bTestMode)
+        {
+            afreqVars <- colnames(dataB4Capping)[-grepl("region|age|gender|lookback|_flag$", colnames(.), ignore.case = T, perl=T)]
+            if(length(afreqVars) > 0) {
+                for (iVar in 1:length(afreqVars))
+                {
+                    positivePart <- dataB4Capping[[afreqVars[iVar]]][dataB4Capping$HAE==1]
+                    nonzeroPart <- positivePart[positivePart > 0]
+                    if (length(nonzeroPart) == 0)
+                        next
+                    threshold <- quantile(nonzeroPart, 99/100, type=3)
+                    currentVar <- afreqVars[iVar]
+                    if (any(.[[afreqVars[iVar]]] > threshold))
+                        stop(paste("Test Failed! Variable", afreqVars[iVar], "is not capped properly."))
+                }
+            }
+            if (F)
+                stop("Test Failed! The final rule of extreme value capping is not determined yet. ")
+            .
+        } else
+            .
+    } %>% 
+    {
+        trVl <- .
+        #         if(nrow(ts)+nrow(.)!=186352 ){
+        #             stop("the splited rowNum is not correct!\n")
+        #             #cat('\n', nrow(ts)+nrow(trVl), '\n')
+        #         }
+        #save test data for simulation i
+        ts1 <- dataSplited[[i]]$ts
+        ts <- ts1[, match(names(trVl), names(ts1))]
+        save(ts, file=paste0(resultDir, 'splitedDataB4ModelTsSim', i, '.RData'))
+        
+        save(trVl, file=paste0(resultDir, 'splitedDataB4ModelTrVlSim', i, '.RData'))
+        cat('trVl data has been saved !\n', 'and the nrow is', nrow(trVl), '!\n')
+    }
+}
 
 # run the bagging forest model
 
