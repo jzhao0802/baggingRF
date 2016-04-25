@@ -271,7 +271,7 @@ run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, it
 }
 
 
-selectFeature <- function(simu, resultDir){
+selectFeature <- function(dir, simu, resultDir){
     dat_hae_trn <- readRDS(file=paste0(dir, "dat_hae_trn_simu", simu, ".RDS"))
     dat_nonhae_trn <- readRDS(file=paste0(dir, "dat_nonhae_trn_simu", simu, ".RDS"))
 
