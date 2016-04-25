@@ -549,7 +549,7 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   Sys.time()->start
   
   # Bagging LASSO, Bagging Random Forest
-  trn_undbag_rf_fit <- readRDS(file=paste0(dataDir, 'trn_rf_fit.RDS'))
+  trn_undbag_rf_fit <- readRDS(file=paste0(outDir, 'trn_rf_fit.RDS'))
   # load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
   for (i in 1:lasso_rf_iters){
     # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters

@@ -32,7 +32,7 @@ main.iters <- 200
 ################################################################################
 main.nonhaeFile <- 'nonhae_200K_I2(A0E1)' #95M_I2
 main.haeFile <- "hae_ptid_A0E1"
-main.fileNm_3M <- "neg_3M_A0E1"
+main.fileNm_3M <- "nonhae_3M_I2(A0E1)"
 
 main.dir <- "F:\\Jie\\Shire_follow_up\\"
 main.haeDir <- paste0(main.dir, "01_data\\")
@@ -63,7 +63,7 @@ run_bagging_rf(n.simu=main.n.simu,
 cat((proc.time()-main.t0)[3]/60, '!\n')
 print("run_bagging_rf finished. ")
 
-main.perf_new200_1233_iter200 <- get_perf_allSimu(dir=main.outDir, 
+iter200 <- get_perf_allSimu(dir=main.outDir, 
                                                   iters=main.iters, 
                                                   n.simu=main.n.simu, 
                                                   recall_tar=main.recall_tar, 
@@ -71,8 +71,10 @@ main.perf_new200_1233_iter200 <- get_perf_allSimu(dir=main.outDir,
                                                   haeFile=main.haeFile)
 print("get_perf_allSimu finished.")
 
-
-run_perf_3M(dir=main.outDir, wk_dir=main.wk_dir, lasso_rf_iters=main.iters, n.simu=main.n.simu, 
+main.t1 <- proc.time()
+run_perf_3M(
+    dir=main.outDir, wk_dir=main.wk_dir, lasso_rf_iters=main.iters, n.simu=main.n.simu, 
             recall_tar=main.recall_tar, fileNm_3M=main.fileNm_3M, path_3M=main.path_3M, 
             haeFile=main.haeFile, nonhaeFile=main.nonhaeFile)
+cat((proc.time()-main.t1)[3]/60)
 print("run_perf_3M finished. ")
