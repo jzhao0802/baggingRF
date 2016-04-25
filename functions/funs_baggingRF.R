@@ -239,11 +239,12 @@ run_bagging_rf_par_forTrainigFit <-
   outDir  <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
   if(!dir.exists(outDir)) 
     dir.create(outDir, showWarnings = T, recursive = TRUE)
-    
-  dat_hae_trn <- readRDS(file=paste0(dir, "dat_hae_trn_simu", simu, ".RDS"))
-  dat_hae_tst <- readRDS(file=paste0(dir, "dat_hae_tst_simu", simu, ".RDS"))
-  dat_nonhae_trn <- readRDS(file=paste0(dir, "dat_nonhae_trn_simu", simu, ".RDS"))
-  dat_nonhae_tst <- readRDS(file=paste0(dir, "dat_nonhae_tst_simu", simu, ".RDS"))
+
+  dataDir <- gsub("(.+/)(\\d{4}-\\d{2}-\\d{2}\\W.+\\W)", "\\1", dir, perl=T, ignore.case = T)    
+  dat_hae_trn <- readRDS(file=paste0(dataDir, "dat_hae_trn_simu", simu, ".RDS"))
+  dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
+  dat_nonhae_trn <- readRDS(file=paste0(dataDir, "dat_nonhae_trn_simu", simu, ".RDS"))
+  dat_nonhae_tst <- readRDS(file=paste0(dataDir, "dat_nonhae_tst_simu", simu, ".RDS"))
   
     
     
@@ -277,27 +278,28 @@ run_bagging_rf_par_forTrainigFit <-
   ### Apply all-training model to testing data
   #########################################################################
 
-  x_hae_trn <- dat_hae_trn[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
-  y_hae_trn <- dat_hae_trn[,match('HAE', names(dat_hae_trn))]
+  # x_hae_trn <- dat_hae_trn[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
+  # y_hae_trn <- dat_hae_trn[,match('HAE', names(dat_hae_trn))]
   x_hae_tst <- dat_hae_tst[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
   y_hae_tst <- dat_hae_tst[,match('HAE', names(dat_hae_trn))]
   
-  dat_nonhae_trn$HAE <- 0
+  # dat_nonhae_trn$HAE <- 0
   dat_nonhae_tst$HAE <- 0
   
-  x_nonhae_trn <- dat_nonhae_trn[
-    , -match(grep('patient_id|hae', names(dat_nonhae_trn), valu=T, perl=T, ignore.case=T), 
-             names(dat_nonhae_trn))
-    ]
-  y_nonhae_trn <- dat_nonhae_trn[,match('HAE', names(dat_nonhae_trn))]
-  x_nonhae_tst <- dat_nonhae_tst[
-    , -match(grep('patient_id|hae', names(dat_nonhae_tst), valu=T, perl=T, ignore.case = T), 
-             names(dat_nonhae_tst))
-    ]
+#   x_nonhae_trn <- dat_nonhae_trn[
+#     , -match(grep('patient_id|hae', names(dat_nonhae_trn), valu=T, perl=T, ignore.case=T), 
+#              names(dat_nonhae_trn))
+#     ]
+#   y_nonhae_trn <- dat_nonhae_trn[,match('HAE', names(dat_nonhae_trn))]
+#   x_nonhae_tst <- dat_nonhae_tst[
+#     , -match(grep('patient_id|hae', names(dat_nonhae_tst), valu=T, perl=T, ignore.case = T), 
+#              names(dat_nonhae_tst))
+#     ]
+  x_nonhae_tst <- dat_nonhae_tst[, match(names(x_hae_tst), names(dat_nonhae_tst))]
   y_nonhae_tst = dat_nonhae_tst[,match('HAE', names(dat_nonhae_tst))]
   
-  x_nonhae_tst <- x_nonhae_tst[, match(names(x_hae_tst), names(x_nonhae_tst))]
-  x_nonhae_trn <- x_nonhae_trn[, match(names(x_hae_trn), names(x_nonhae_trn))]
+#   x_nonhae_tst <- x_nonhae_tst[, match(names(x_hae_tst), names(x_nonhae_tst))]
+#   x_nonhae_trn <- x_nonhae_trn[, match(names(x_hae_trn), names(x_nonhae_trn))]
   x_tst <- rbind(x_hae_tst, x_nonhae_tst)
   y_tst <- c(y_hae_tst, y_nonhae_tst)
   dat_tst <- data.frame(y_tst, x_tst)
@@ -335,7 +337,7 @@ run_bagging_rf_par_forTrainigFit <-
 
 run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeFile)
 {
-  dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+  # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
   
   trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
   if(!dir.exists(trace_path)) 
