@@ -418,14 +418,14 @@ ConcatenatePreds <- function(simu, dir, iters)
   # Also I don't think it's necessary to save a separate file of resp_simu? 
   ################################################################################
   # saveRDS(resp, file = paste0(dir, "resp_simu", simu, ".RDS"))
-  tst_prob_rf <- readRDS(paste0(dir, "iters=", iters, "\\simu", simu, "\\tst_rf_prob.RDS"))
+  tst_prob_rf <- readRDS(paste0(dir, "simu", simu, "\\tst_rf_prob.RDS"))
   
   return(tst_prob_rf)
 }
 
 get_perf_allSimu <- function(dir, iters, n.simu, recall_tar, haeFile, nonhaeFile){
   
-  dir <- paste0(dir, nonhaeFile, '&', haeFile, '/')
+  dir <- paste0(dir, "iters=", iters, "\\")
   
   temp <- lapply(1:n.simu, ConcatenatePreds, dir=dir, iters=iters)
   
@@ -436,10 +436,10 @@ get_perf_allSimu <- function(dir, iters, n.simu, recall_tar, haeFile, nonhaeFile
   # saveRDS(resp_pred, paste0(dir, 'iters=', iters, '\\resp_pred.RData'))
   # which despite using saveRDS, the target file has an extention of .RData. 
   ################################################################################
-  saveRDS(resp_pred, paste0(dir, 'iters=', iters, '\\resp_pred.RDS'))
+  saveRDS(resp_pred, paste0(dir, 'resp_pred.RDS'))
   temp1 <- msOnTest_sep_v2(resp_pred[, 2], resp_pred[, 1], recall_tar)
   perf <- temp1$ms
-  write.csv(perf, paste0(dir, 'iters=', iters, '\\performance_onAllSimu.csv'))
+  write.csv(perf, paste0(dir,'performance_onAllSimu.csv'))
   return(perf)
 }
 
@@ -519,17 +519,17 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   # and this shouldn't be there since the same was done in the function that
   # calls this one. Otherwise the directory won't be correct. 
   ################################################################################
-    
-  outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
+    dataDir <- gsub("(.+/)(\\d{4}-\\d{2}-\\d{2}\\W.+\\W)", "\\1", dir, perl=T, ignore.case = T)    
+    outDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
   # if(!dir.exists(plots_path)){dir.create(plots_path, showWarnings = T, recursive = T, model='0777')}
-  x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv"), sep=',', 
+    x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv"), sep=',', 
                      stringsAsFactors = F, head=T)
-  if('lookback_days' %in% names(x_3M)){
-    x_3M <- x_3M %>% 
-      mutate(LOOKBACK_DAYS=lookback_days) %>% 
-      select(-patient_id) %>% 
-      select(-lookback_days)
-  }
+      if('lookback_days' %in% names(x_3M)){
+        x_3M <- x_3M %>% 
+          mutate(LOOKBACK_DAYS=lookback_days) %>% 
+          select(-patient_id) %>% 
+          select(-lookback_days)
+      }
   
 
   
@@ -541,7 +541,7 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
   # load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
   # rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
-  gc()
+#   gc()
   
   tst_prob_rf <- rep(0, nrow(x_3M))
   tst_prob_rf_hae <- rep(0, nrow(dat_hae_tst)) #218
@@ -557,7 +557,9 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
     tst_prob_rf <- tst_prob_rf + 
       predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
     tst_prob_rf_hae <- tst_prob_rf_hae + 
-      predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID'), names(dat_hae_tst))], type = "prob")[,2]/lasso_rf_iters
+      predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID')
+                                                          , names(dat_hae_tst))]
+              , type = "prob")[,2]/lasso_rf_iters
   }
   
   print(Sys.time()-start)
@@ -594,7 +596,7 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
 run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, 
                         fileNm_3M, path_3M, haeFile, nonhaeFile){
   
-  dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+  # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
   
   trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
   if(!dir.exists(trace_path)) 
