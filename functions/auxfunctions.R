@@ -110,9 +110,10 @@ undbag_lasso_rf <- function(rf_formula, dat_pos, dat_neg, iters, mtry, ntree){
 
 	x_pos <- dat_pos[,-match(c('PATIENT_ID', 'HAE'), names(dat_pos))]
 	y_pos <- dat_pos$HAE
-	x_neg <- dat_neg[
-	  ,-match(grep('patient_id|hae', names(dat_neg), valu=T, perl=T, ignore.case = T), 
-	          names(dat_neg))]
+# 	x_neg <- dat_neg[
+# 	  ,-match(grep('patient_id|hae', names(dat_neg), valu=T, perl=T, ignore.case = T), 
+# 	          names(dat_neg))]
+	x_neg <- dat_neg[, match(names(x_pos), names(dat_neg))]
 	y_neg <- dat_neg$HAE
 
 	undbag_lasso_fit <- list()
