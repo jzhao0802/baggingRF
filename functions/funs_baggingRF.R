@@ -17,6 +17,19 @@ FindPrecisionAtGivenRecall <- function(recall, rec_prec)
   return(prec_sel)
 }
 
+BucketAge <- function(age)
+{
+    # thresholds are 30, 50 and 70
+    
+    bucket <- rep("", length(age))
+    bucket[age <= 29] = "AGE<=29"
+    bucket[(age >= 30) & (age <= 49)] = "30<=AGE<=49"
+    bucket[(age >= 50) & (age <= 69)] = "50<=AGE<=69"
+    bucket[age >= 70] = "AGE>=70"
+    
+    return (bucket)
+}
+
 
 BucketAge <- function(data, outDir){
     temp <- data %>%
@@ -117,7 +130,9 @@ msOnTest_sep_v3 <- function(pred, response, recall_tar, simu){
 }
 
 
-split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, iters){
+split_simulations <- function(n.simu, haeFile, nonhaeFile
+                              , haeDir, nonhaeDir, outDir, iters
+                              , BageBucket){
   
   dat_hae_1111_rf_nov26 <- 
       read.csv(paste0(haeDir, "dat_hae_1111_rf_nov26_flag.csv")
