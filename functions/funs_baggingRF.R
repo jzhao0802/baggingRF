@@ -104,7 +104,7 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
   # but there was not such a RDS file at all! Now I have created such an RDS file 
   # in order to execute the code. 
   ################################################################################
-  HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))
+  HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))[, 1]
   ################################################################################
   # Lichao: 
   # The following line was  
@@ -125,14 +125,14 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
       nonhae$hae_patient_id <- as.numeric(nonhae$hae_patient_id)
       nonhae$GENDERM <- ifelse(nonhae$GENDER=='M', 1, 0)
       nonhae$GENDER <- NULL
-  }else if(grepl('nonhae_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
+  }else if(grepl('nonhae_200K_\\w+\\(A\\dE\\d\\)', nonhaeFile, ignore.case = T)){
       dat_nonhae <- 
         read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
                    sep=',', stringsAsFactors = F, head=T)
       nonhae <- dat_nonhae %>% 
         mutate(LOOKBACK_DAYS=lookback_days) %>% 
         select(-c(lookback_days))
-  }else if(grepl('300K|nonhae_A_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
+  }else if(grepl('300K|nonhae_another_200K_\\w+\\(A\\dE\\d\\)', nonhaeFile, ignore.case = T)){
       dat_nonhae <- 
         read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
                    sep=',', stringsAsFactors = F, head=T)
@@ -166,7 +166,7 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, ou
   
   for (simu in 1:n.simu)
   {
-    if(grepl('300K|nonhae_A_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
+    if(grepl('300K|nonhae_another_200K_\\w+\\(A\\dE\\d\\)', nonhaeFile, ignore.case = T)){
       ################################################################################
       # Lichao: 
       # tr_idx <- createFolds(hae$PATIENT_ID, 5, returnTrain=T)[[simu]]

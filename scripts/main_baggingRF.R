@@ -19,7 +19,7 @@ setwd(main.wk_dir)
 # 
 main.n.simu = 5
 main.recall_tar <- seq(0.5, 0.05, -0.05)
-main.iters <- 20
+main.iters <- 200
 
 ################################################################################
 # Lichao: 
@@ -30,25 +30,27 @@ main.iters <- 20
 # haeDir="F:\\Jie\\Shire_follow_up\\01_data\\"
 # nonhaeDir="F:\\Jie\\Shire_follow_up\\01_data\\newdata_200K_3M\\"
 ################################################################################
-main.nonhaeFile <- 'nonhae_200K_v2'
-main.haeFile <- "HAE973_ptid"
-main.fileNm_3M <- "neg_3M_clean2335697"
+main.nonhaeFile <- 'nonhae_200K_I2(A0E1)' #95M_I2
+main.haeFile <- "hae_ptid_A0E1"
+main.fileNm_3M <- "neg_3M_A0E1"
 
 main.dir <- "F:\\Jie\\Shire_follow_up\\"
 main.haeDir <- paste0(main.dir, "01_data\\")
 main.nonhaeDir <- paste0(main.haeDir, "newdata_200K_3M\\")
 main.path_3M <- main.nonhaeDir
+main.modelDataOutDir <- paste(main.wk_dir, "Results/")
+run_split(n.simu=main.n.simu, nonhaeFile=main.nonhaeFile, haeFile=main.haeFile, 
+          haeDir=main.haeDir, nonhaeDir=main.nonhaeDir, outDir=main.modelDataOutDir,
+          iters=main.iters)
+print("run_split finished.")
+
 
 main.timeStamp <- as.character(Sys.time())
 main.timeStamp <- gsub(":", ".", main.timeStamp)  # replace ":" by "."
-main.outDir <- paste(main.wk_dir, "Results/", main.timeStamp, "/", sep = '')
+main.outDir <- paste(main.modelDataOutDir, nonhaeFile, '&', haeFile, "/",  main.timeStamp, "/", sep = '')
 dir.create(main.outDir, showWarnings = TRUE, recursive = TRUE, mode = "0777")
 
 
-run_split(n.simu=main.n.simu, nonhaeFile=main.nonhaeFile, haeFile=main.haeFile, 
-          haeDir=main.haeDir, nonhaeDir=main.nonhaeDir, outDir=main.outDir,
-          iters=main.iters)
-print("run_split finished.")
 
 
 main.t0 <- proc.time()
