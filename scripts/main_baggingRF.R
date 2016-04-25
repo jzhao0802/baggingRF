@@ -5,7 +5,7 @@ rm(list=ls())
 source("scripts/loadpackage.R")
 # Load R packages
 install_load("ggplot2", 'ROCR', 'PRROC', 'randomForest', 'caret', 'e1071', 'reshape2', 'sqldf', 'glmnet', 'caTools'
-             , "gbm", "dplyr", "snowfall", 'plyr')
+             , "dplyr", "snowfall", 'plyr')
 # Auxiliary functions
 source("functions/auxfunctions.R")
 # 
@@ -38,7 +38,7 @@ main.dir <- "F:\\Jie\\Shire_follow_up\\"
 main.haeDir <- paste0(main.dir, "01_data\\")
 main.nonhaeDir <- paste0(main.haeDir, "newdata_200K_3M\\")
 main.path_3M <- main.nonhaeDir
-main.modelDataOutDir <- paste(main.wk_dir, "Results/")
+main.modelDataOutDir <- paste0(main.wk_dir, "Results/")
 run_split(n.simu=main.n.simu, nonhaeFile=main.nonhaeFile, haeFile=main.haeFile, 
           haeDir=main.haeDir, nonhaeDir=main.nonhaeDir, outDir=main.modelDataOutDir,
           iters=main.iters)
@@ -47,7 +47,7 @@ print("run_split finished.")
 
 main.timeStamp <- as.character(Sys.time())
 main.timeStamp <- gsub(":", ".", main.timeStamp)  # replace ":" by "."
-main.outDir <- paste(main.modelDataOutDir, nonhaeFile, '&', haeFile, "/",  main.timeStamp, "/", sep = '')
+main.outDir <- paste(main.modelDataOutDir, main.nonhaeFile, '&', main.haeFile, "/",  main.timeStamp, "/", sep = '')
 dir.create(main.outDir, showWarnings = TRUE, recursive = TRUE, mode = "0777")
 
 
