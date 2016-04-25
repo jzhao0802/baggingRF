@@ -31,7 +31,7 @@ BucketAge <- function(age)
 }
 
 
-BucketAge <- function(data, outDir){
+addBucketAge <- function(data, outDir){
     temp <- data %>%
     {
         print("Putting AGE into buckets..");cat("\n")
@@ -212,8 +212,8 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
   
   # if age should be bucketed
   if(BageBucket==T){
-      hae <- BucketAge(hae, outDir)
-      dat_nonhae <- BucketAge(dat_nonhae, outDir)
+      hae <- addBucketAge(hae, outDir)
+      dat_nonhae <- addBucketAge(dat_nonhae, outDir)
   }
   
   
