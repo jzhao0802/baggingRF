@@ -307,6 +307,7 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
 selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
                           , haeFile=main.haeFile
                           , dir=main.modelDataOutDir
+                          , wk_dir=main.wk_dir
                           , bTestMode){
     outDir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
     dat_hae_trn <- readRDS(file=paste0(outDir, "dat_hae_trn_simu", simu, ".RDS"))
@@ -365,7 +366,7 @@ selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
                     var_pair <- colnames(dataLastStep)[c(iVar, jVar)]
                     bMatch1 <- grepl('afreq$', var_pair, ignore.case = T, perl=T)
                     bMatch2 <- grepl('_freq$', var_pair, ignore.case = T, perl=T)
-                    cat(any(bMatch1==T) & any(bMatch2==T), '\n')
+#                     cat(any(bMatch1==T) & any(bMatch2==T), '\n')
                     if(any(bMatch1==T) & any(bMatch2==T)){
                         
                         afreq_var <- var_pair[bMatch1]
@@ -475,7 +476,7 @@ selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
         } else
             .
     } %>% 
-        final <- data_cap %>%
+#         final <- data_cap %>%
     {
         trVl <- .
         #         if(nrow(ts)+nrow(.)!=186352 ){
@@ -517,9 +518,52 @@ selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
 }
 
 # run the bagging forest model
+run_selectFeature <- function(n.simu, nonhaeFile=main.nonhaeFile
+                              , haeFile=main.haeFile
+                              , dir=main.modelDataOutDir
+                              , wk_dir=main.wk_dir
+                              , bTestMode)
+{
+
+    sfInit(parallel=TRUE, cpus=n.simu, type='SOCK')
+
+    sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", "bTestMode")
+    sfExport('selectFeature')
+    
+    sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
+    # Auxiliary functions
+    sfSource(paste0(wk_dir, "functions/auxfunctions.R"))
+    # 
+    sfSource(paste0(wk_dir, "functions/funs_baggingRF.R"))
+    
+    sfClusterEval(library(ggplot2))
+    sfClusterEval(library(ROCR))
+    sfClusterEval(library(PRROC))
+    # sfClusterEval(library(FSelector))
+    sfClusterEval(library(randomForest))
+    sfClusterEval(library(caret))
+    sfClusterEval(library(e1071))
+    sfClusterEval(library(reshape2))
+    sfClusterEval(library(sqldf))
+    sfClusterEval(library(glmnet))
+    sfClusterEval(library(caTools))
+    # sfClusterEval(library(gbm))
+    # sfClusterEval(library(xlsx))
+    sfClusterEval(library(dplyr))   
+    ################################################################################
+    # Lichao: 
+    # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
+    ################################################################################
+    temp <- sfClusterApplyLB(1:n.simu, selectFeature, nonhaeFile
+                             , haeFile
+                             , dir
+                             , wk_dir
+                             , bTestMode)
+    sfStop()    
+}
 
 run_bagging_rf_par_forTrainigFit <- 
-  function(simu, dir, lasso_rf_iters, nonhaeFile, haeFile)
+  function(simu, dir, lasso_rf_iters, nonhaeFile, haeFile, bFeatureSelection)
 {
   ################################################################################
   # Lichao: 
@@ -540,11 +584,21 @@ run_bagging_rf_par_forTrainigFit <-
     dir.create(outDir, showWarnings = T, recursive = TRUE)
 
   dataDir <- gsub("(.+/)(\\d{4}-\\d{2}-\\d{2}\\W.+\\W)", "\\1", dir, perl=T, ignore.case = T)    
-  dat_hae_trn <- readRDS(file=paste0(dataDir, "dat_hae_trn_simu", simu, ".RDS"))
-  dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
-  dat_nonhae_trn <- readRDS(file=paste0(dataDir, "dat_nonhae_trn_simu", simu, ".RDS"))
-  dat_nonhae_tst <- readRDS(file=paste0(dataDir, "dat_nonhae_tst_simu", simu, ".RDS"))
-  
+  if(bFeatureSelection==T){
+      dat_hae_trn <- readRDS(file=paste0(dataDir, "dat_hae_trn_afterFeatureSel_simu", simu, ".RDS"))
+      dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_afterFeatureSel_simu", simu, ".RDS"))
+      dat_nonhae_trn <- readRDS(file=paste0(dataDir, "dat_nonhae_trn_afterFeatureSel_simu", simu, ".RDS"))
+      dat_nonhae_tst <- readRDS(file=paste0(dataDir, "dat_nonhae_tst_afterFeatureSel_simu", simu, ".RDS"))
+      
+      
+  }else{
+      dat_hae_trn <- readRDS(file=paste0(dataDir, "dat_hae_trn_simu", simu, ".RDS"))
+      dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
+      dat_nonhae_trn <- readRDS(file=paste0(dataDir, "dat_nonhae_trn_simu", simu, ".RDS"))
+      dat_nonhae_tst <- readRDS(file=paste0(dataDir, "dat_nonhae_tst_simu", simu, ".RDS"))
+      
+      
+  }
     
     
     
@@ -634,7 +688,8 @@ run_bagging_rf_par_forTrainigFit <-
 }
 
 
-run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeFile)
+run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeFile
+                           , bFeatureSelection)
 {
   # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
   
@@ -650,7 +705,7 @@ run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeF
   #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
   
   cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
-  sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile")
+  sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", 'bFeatureSelection')
   sfExport('undbag_lasso_rf')
   
   sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
@@ -678,7 +733,7 @@ run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeF
   # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
   ################################################################################
   temp <- sfClusterApplyLB(1:n.simu, run_bagging_rf_par_forTrainigFit, dir, 
-                           lasso_rf_iters, nonhaeFile, haeFile)
+                           lasso_rf_iters, nonhaeFile, haeFile, bFeatureSelection)
   #save(pred_ts_allSim, file=paste0(modelDir, '//pred_allSim.RData'))
   sfStop()
   # run_bagging_rf_par_forTrainigFit(1, dir, lasso_rf_iters, nonhaeFile, haeFile)
@@ -810,7 +865,8 @@ run_perf_3M_forPRcurve <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_t
 
 
 get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M, 
-                            path_3M, nonhaeFile, haeFile){
+                            path_3M, nonhaeFile, haeFile,
+                            bFeatureSelection){
   ################################################################################
   # Lichao: 
   # Previously there was this line: 
@@ -837,7 +893,12 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   # Instead of loading all 4 datasets and removing three of them, only one is
   # loaded now. 
   ################################################################################
-  dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
+    if(bFeatureSelection==T){
+        dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_afterFeatureSel_simu", simu, ".RDS"))
+
+    }else{
+        dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
+    }
   # load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
   # rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
 #   gc()
@@ -893,7 +954,8 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
 }
 
 run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, 
-                        fileNm_3M, path_3M, haeFile, nonhaeFile){
+                        fileNm_3M, path_3M, haeFile, nonhaeFile,
+                        bFeatureSelection=main.bFeatureSelection){
   
   # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
   
@@ -909,7 +971,7 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar,
   
   cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
   sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", "lasso_rf_iters",
-           "recall_tar", "fileNm_3M", "path_3M")
+           "recall_tar", "fileNm_3M", "path_3M", "bFeatureSelection")
   sfExport('get_perf_3M_par', 'msOnTest_sep_v2')
   
   sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
@@ -937,7 +999,8 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar,
   # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
   ################################################################################
   temp <- sfClusterApplyLB(1:n.simu, get_perf_3M_par, dir, lasso_rf_iters, 
-                           recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile)
+                           recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile,
+                           bFeatureSelection)
   sfStop()
   
     # get_perf_3M_par(1, dir, lasso_rf_iters, recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile)
