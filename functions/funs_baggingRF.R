@@ -31,7 +31,7 @@ BucketAge <- function(age)
 }
 
 
-addBucketAge <- function(data, outDir){
+addBucketAge <- function(data, outDir, bTestMode){
     temp <- data %>%
     {
         print("Putting AGE into buckets..");cat("\n")
@@ -60,6 +60,37 @@ addBucketAge <- function(data, outDir){
     else
         print("Finished without testing")
     return(temp)
+}
+
+
+# uses the non-zero values of the positive/HAE patients part
+CapPercentile <- function(vec, Hae, percentile) {
+    if ((percentile < 0) | (percentile > 100))
+        stop("Error! percentile must be between 0 and 100 (inclusive). ")
+    positivePatPart <- vec[Hae==1]
+    nonzeroPart <- positivePatPart[positivePatPart > 0]
+    if (length(nonzeroPart) == 0)
+        return (vec)
+    threshold <- quantile(nonzeroPart, percentile/100, type=3)
+    vec[vec > threshold] <- threshold
+    return (vec)
+}
+
+CapPercentile_Threshold <- function(vec, Hae, percentile) {
+    if ((percentile < 0) | (percentile > 100))
+        stop("Error! percentile must be between 0 and 100 (inclusive). ")
+    positivePatPart <- vec[Hae==1]
+    nonzeroPart <- positivePatPart[positivePatPart > 0]
+    threshold <- quantile(nonzeroPart, percentile/100, type=3)
+    return (threshold)
+}
+
+PrintMaxAndPercentile <- function(vec, percentile) {
+    p <- quantile(vec, percentile/100, type=3)
+    m <- max(vec)
+    print("head(vec):")
+    print(head(vec))
+    print(paste(names(vec), ", Max:", m, ", 99 percentile:", p))
 }
 
 
@@ -132,7 +163,7 @@ msOnTest_sep_v3 <- function(pred, response, recall_tar, simu){
 
 split_simulations <- function(n.simu, haeFile, nonhaeFile
                               , haeDir, nonhaeDir, outDir, iters
-                              , BageBucket){
+                              , BageBucket, bTestMode){
   
   dat_hae_1111_rf_nov26 <- 
       read.csv(paste0(haeDir, "dat_hae_1111_rf_nov26_flag.csv")
@@ -184,7 +215,7 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
       dat_nonhae <- 
         read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
                    sep=',', stringsAsFactors = F, head=T)
-      dat_nonhae <- dat_nonhae %>% 
+      nonhae <- dat_nonhae %>% 
         mutate(LOOKBACK_DAYS=lookback_days) %>% 
         select(-c(lookback_days))
       
@@ -212,8 +243,8 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
   
   # if age should be bucketed
   if(BageBucket==T){
-      hae <- addBucketAge(hae, outDir)
-      dat_nonhae <- addBucketAge(dat_nonhae, outDir)
+      hae <- addBucketAge(hae, outDir, bTestMode)
+      nonhae <- addBucketAge(nonhae, outDir, bTestMode)
   }
   
   
@@ -221,7 +252,8 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
   
   for (simu in 1:n.simu)
   {
-    if(grepl('300K|nonhae_another_200K_\\w+\\(A\\dE\\d\\)', nonhaeFile, ignore.case = T)){
+    if(grepl('300K|nonhae_another_200K_\\w+\\(A\\dE\\d\\)'
+             , nonhaeFile, ignore.case = T)){
       ################################################################################
       # Lichao: 
       # tr_idx <- createFolds(hae$PATIENT_ID, 5, returnTrain=T)[[simu]]
@@ -231,9 +263,9 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
       dat_hae_trn <- hae[tr_idx, ]
       dat_hae_tst <- hae[-tr_idx, ]
       
-      tr_idx_nonhae <- createFolds(dat_nonhae$patient_id, n.simu, returnTrain=T)[[simu]]
-      dat_nonhae_trn <- dat_nonhae[tr_idx_nonhae, ]
-      dat_nonhae_tst <- dat_nonhae[-tr_idx_nonhae, ]
+      tr_idx_nonhae <- createFolds(nonhae$patient_id, n.simu, returnTrain=T)[[simu]]
+      dat_nonhae_trn <- nonhae[tr_idx_nonhae, ]
+      dat_nonhae_tst <- nonhae[-tr_idx_nonhae, ]
       
     }else{
       tr_idx <- createFolds(hae$PATIENT_ID, n.simu, returnTrain=T)[[simu]]
@@ -260,23 +292,33 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
   }
 }
 
-run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, iters){
-  ################################################################################
-  # Lichao: 
-  # There's no need to do it 5 times. Once is enough. 
-  ################################################################################
-  
-  split_simulations(n.simu=n.simu, haeFile=haeFile, nonhaeFile=nonhaeFile, haeDir=haeDir, 
-                    nonhaeDir=nonhaeDir, outDir=outDir, iters=iters)
-}
+# run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, iters, BageBucket, bTestMode){
+#   ################################################################################
+#   # Lichao: 
+#   # There's no need to do it 5 times. Once is enough. 
+#   ################################################################################
+#   
+#   split_simulations(n.simu=n.simu, haeFile=haeFile, nonhaeFile=nonhaeFile, haeDir=haeDir, 
+#                     nonhaeDir=nonhaeDir, outDir=outDir, iters=iters, BageBucket=BageBucket
+#                     , bTestMode = bTestMode)
+# }
+# 
 
-
-selectFeature <- function(dir, simu, resultDir){
-    dat_hae_trn <- readRDS(file=paste0(dir, "dat_hae_trn_simu", simu, ".RDS"))
-    dat_nonhae_trn <- readRDS(file=paste0(dir, "dat_nonhae_trn_simu", simu, ".RDS")) %>%
-	.[, match(names(dat_hae_trn), names(.))]
-
-    dataB4Model1 <- bind_rows(dat_hae_trn, dat_nonhae_trn)  %>%
+selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
+                          , haeFile=main.haeFile
+                          , dir=main.modelDataOutDir
+                          , bTestMode){
+    outDir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+    dat_hae_trn <- readRDS(file=paste0(outDir, "dat_hae_trn_simu", simu, ".RDS"))
+    ptid_hae_trn <- data.frame(PATIENT_ID=dat_hae_trn[, grepl('patient_id', names(dat_hae_trn)
+                                                      , ignore.case = T)])
+    dat_nonhae_trn <- readRDS(file=paste0(outDir, "dat_nonhae_trn_simu", simu, ".RDS"))
+    ptid_nonhae_trn <- dat_nonhae_trn[, grepl('patient_id', names(dat_nonhae_trn)
+                                              , ignore.case = T)]
+    dat_hae_trn_x <- dat_hae_trn[, !grepl('patient_id', names(dat_hae_trn)
+                                            , ignore.case = T)]
+    dat_nonhae_trn_x <- dat_nonhae_trn[, match(names(dat_hae_trn_x), names(dat_nonhae_trn))]
+    dataB4Model1 <- bind_rows(dat_hae_trn_x, dat_nonhae_trn_x)  %>%
         # remove constant columns
     {
         dataLastStep <- .
@@ -296,7 +338,7 @@ selectFeature <- function(dir, simu, resultDir){
         .
     } %>%
     {
-        file_corr <- file(paste(dir, "colinear_vars_simu", simu, ".txt", sep=""), "w")
+        file_corr <- file(paste(outDir, "colinear_vars_simu", simu, ".txt", sep=""), "w")
         threshold <- 0.8
         if (bTestMode)
             collThreshold <<- threshold
@@ -320,19 +362,22 @@ selectFeature <- function(dir, simu, resultDir){
                     next
                 if (abs(corrMat[iVar, jVar]) >= threshold)
                 {
-                    var_pair <- colnames(dataLastStep)[c(ivar, jvar)]
+                    var_pair <- colnames(dataLastStep)[c(iVar, jVar)]
                     bMatch1 <- grepl('afreq$', var_pair, ignore.case = T, perl=T)
                     bMatch2 <- grepl('_freq$', var_pair, ignore.case = T, perl=T)
+                    cat(any(bMatch1==T) & any(bMatch2==T), '\n')
                     if(any(bMatch1==T) & any(bMatch2==T)){
                         
                         afreq_var <- var_pair[bMatch1]
-                        prefix <- gsub('(\\w+\\d*)(_freq$)', '\\1', afreq_var, perl=T, ignore.case = T)
+                        prefix <- gsub('(\\w+\\d*)(_afreq$)', '\\1', afreq_var, perl=T, ignore.case = T)
                         if(regexpr(prefix, var_pair[bMatch2])==T){
                             vars2Remove <- c(vars2Remove, var_pair[bMatch2])    
                         }
                         
+                    }else{
+                        vars2Remove <- c(vars2Remove, colnames(dataLastStep)[jVar])
+                        
                     }
-                    vars2Remove <- c(vars2Remove, colnames(dataLastStep)[jVar])
                     writeLines(paste(colnames(dataLastStep)[iVar], 
                                      "is correlated with", 
                                      colnames(dataLastStep)[jVar], 
@@ -340,12 +385,13 @@ selectFeature <- function(dir, simu, resultDir){
                 }
                 
             }
-        }
-        
+        }        
         writeLines("vars2Remove due to collinearity:", file_corr)
         writeLines(paste(vars2Remove,collapse=","), file_corr)
         
         close(file_corr)
+        cat("Remove total number ofcollinear variables:", length(vars2Remove), "\n")
+        
         if (!is.null(vars2Remove))
             select(., -one_of(vars2Remove))
         else
@@ -387,12 +433,12 @@ selectFeature <- function(dir, simu, resultDir){
         #             2, PrintMaxAndPercentile, percentile=99)
         
         # compute 99% percentile
-        capping_vct_onPos <<- sapply(dataLastStep[, vars2Cap], function(x)CapPercentile2(x, Hae=dataLastStep$HAE, percentile=99))
+        capping_vct_onPos <<- sapply(dataLastStep[, vars2Cap], function(x)CapPercentile(x, Hae=dataLastStep$HAE, percentile=99))
         names(capping_vct_onPos) <- gsub("(.+)(\\.99%)", "\\1", names(capping_vct_onPos), perl=T)
         
-        #         save(capping_vct_onPos, file=paste0(resultDir, 'capping_vct_onPos.RData'))
+        save(capping_vct_onPos, file=paste0(outDir, 'capping_vct_onPos_simu', simu, '.RData'))
         dataMutated <- 
-            mutate_each(dataLastStep, funs(CapPercentile(., Hae=dataLastStep$HAE, percentile = 99)), 
+            mutate_each(dataLastStep, funs(CapPercentile_Threshold(., Hae=dataLastStep$HAE, percentile = 99)), 
                         one_of(vars2Cap))
         
         #         dataMutated <- dataLastStep %>% 
@@ -429,6 +475,7 @@ selectFeature <- function(dir, simu, resultDir){
         } else
             .
     } %>% 
+        final <- data_cap %>%
     {
         trVl <- .
         #         if(nrow(ts)+nrow(.)!=186352 ){
@@ -436,11 +483,35 @@ selectFeature <- function(dir, simu, resultDir){
         #             #cat('\n', nrow(ts)+nrow(trVl), '\n')
         #         }
         #save test data for simulation i
-        ts1 <- dataSplited[[i]]$ts
-        ts <- ts1[, match(names(trVl), names(ts1))]
-        save(ts, file=paste0(dir, 'splitedDataB4ModelTsSim', i, '.RData'))
-        
-        save(trVl, file=paste0(dir, 'splitedDataB4ModelTrVlSim', i, '.RData'))
+        #ts1 <- dataSplited[[i]]$ts 
+        trVl_hae <- trVl %>% filter(HAE==1) %>%
+            bind_cols(ptid_hae_trn, .)
+        trVl_nonhae <- trVl %>% filter(HAE==0) %>%
+            bind_cols(ptid_nonhae_trn, .)
+            
+		ts_hae <- readRDS(file=paste0(outDir, "dat_hae_tst_simu", simu, ".RDS")) %>%
+    		.[, c(grep('patient_id', names(.), ignore.case = T, value = F)
+    		      , match(names(trVl), names(.)))
+    		  ]
+		ts_nonhae <- readRDS(file=paste0(outDir, "dat_nonhae_tst_simu", simu, ".RDS")) %>%
+    		.[, c(grep('patient_id', names(.), ignore.case = T, value = F)
+    		    ,match(names(trVl), names(.)))
+    		  ]
+		
+		saveRDS(trVl_hae, file=paste0(outDir, "dat_hae_trn_afterFeatureSel_"
+		                                 , "simu", simu, ".RDS"))
+		saveRDS(trVl_nonhae, file=paste0(outDir, "dat_nonhae_trn_afterFeatureSel_"
+		                                    , "simu", simu, ".RDS"))
+		
+		saveRDS(ts_hae, file=paste0(outDir, "dat_hae_tst_afterFeatureSel_"
+		                                 , "simu", simu, ".RDS"))
+		saveRDS(ts_nonhae, file=paste0(outDir, "dat_nonhae_tst_afterFeatureSel_"
+		                                 , "simu", simu, ".RDS"))
+        #ts <- ts1[, match(names(trVl), names(ts1))]
+# 		ts <- bind_rows(dat_hae_tst, dat_nonhae_tst)
+#         save(ts, file=paste0(dir, 'splitedDataB4ModelTsSim', i, '.RData'))
+#         
+#         save(trVl, file=paste0(dir, 'splitedDataB4ModelTrVlSim', i, '.RData'))
         cat('trVl data has been saved !\n', 'and the nrow is', nrow(trVl), '!\n')
     }
 }
