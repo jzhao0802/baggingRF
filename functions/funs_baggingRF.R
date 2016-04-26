@@ -152,7 +152,7 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
   # but there was not such a RDS file at all! Now I have created such an RDS file 
   # in order to execute the code. 
   ################################################################################
-  HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))
+  HAE_ptid <- readRDS(paste0(haeDir, haeFile, '.RDS'))[, 1]
   ################################################################################
   # Lichao: 
   # The following line was  
@@ -173,14 +173,14 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
       nonhae$hae_patient_id <- as.numeric(nonhae$hae_patient_id)
       nonhae$GENDERM <- ifelse(nonhae$GENDER=='M', 1, 0)
       nonhae$GENDER <- NULL
-  }else if(grepl('nonhae_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
+  }else if(grepl('nonhae_200K_\\w+\\(A\\dE\\d\\)', nonhaeFile, ignore.case = T)){
       dat_nonhae <- 
         read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
                    sep=',', stringsAsFactors = F, head=T)
       nonhae <- dat_nonhae %>% 
         mutate(LOOKBACK_DAYS=lookback_days) %>% 
         select(-c(lookback_days))
-  }else if(grepl('300K|nonhae_A_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
+  }else if(grepl('300K|nonhae_another_200K_\\w+\\(A\\dE\\d\\)', nonhaeFile, ignore.case = T)){
       dat_nonhae <- 
         read.table(paste0(nonhaeDir, nonhaeFile, ".csv"), 
                    sep=',', stringsAsFactors = F, head=T)
@@ -221,7 +221,7 @@ split_simulations <- function(n.simu, haeFile, nonhaeFile
   
   for (simu in 1:n.simu)
   {
-    if(grepl('300K|nonhae_A_200K_A\\dE\\d', nonhaeFile, ignore.case = T)){
+    if(grepl('300K|nonhae_another_200K_\\w+\\(A\\dE\\d\\)', nonhaeFile, ignore.case = T)){
       ################################################################################
       # Lichao: 
       # tr_idx <- createFolds(hae$PATIENT_ID, 5, returnTrain=T)[[simu]]
@@ -467,11 +467,12 @@ run_bagging_rf_par_forTrainigFit <-
   outDir  <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
   if(!dir.exists(outDir)) 
     dir.create(outDir, showWarnings = T, recursive = TRUE)
-    
-  dat_hae_trn <- readRDS(file=paste0(dir, "dat_hae_trn_simu", simu, ".RDS"))
-  dat_hae_tst <- readRDS(file=paste0(dir, "dat_hae_tst_simu", simu, ".RDS"))
-  dat_nonhae_trn <- readRDS(file=paste0(dir, "dat_nonhae_trn_simu", simu, ".RDS"))
-  dat_nonhae_tst <- readRDS(file=paste0(dir, "dat_nonhae_tst_simu", simu, ".RDS"))
+
+  dataDir <- gsub("(.+/)(\\d{4}-\\d{2}-\\d{2}\\W.+\\W)", "\\1", dir, perl=T, ignore.case = T)    
+  dat_hae_trn <- readRDS(file=paste0(dataDir, "dat_hae_trn_simu", simu, ".RDS"))
+  dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
+  dat_nonhae_trn <- readRDS(file=paste0(dataDir, "dat_nonhae_trn_simu", simu, ".RDS"))
+  dat_nonhae_tst <- readRDS(file=paste0(dataDir, "dat_nonhae_tst_simu", simu, ".RDS"))
   
     
     
@@ -505,27 +506,28 @@ run_bagging_rf_par_forTrainigFit <-
   ### Apply all-training model to testing data
   #########################################################################
 
-  x_hae_trn <- dat_hae_trn[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
-  y_hae_trn <- dat_hae_trn[,match('HAE', names(dat_hae_trn))]
+  # x_hae_trn <- dat_hae_trn[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
+  # y_hae_trn <- dat_hae_trn[,match('HAE', names(dat_hae_trn))]
   x_hae_tst <- dat_hae_tst[,-match(c('PATIENT_ID', 'HAE'), names(dat_hae_trn))]
   y_hae_tst <- dat_hae_tst[,match('HAE', names(dat_hae_trn))]
   
-  dat_nonhae_trn$HAE <- 0
+  # dat_nonhae_trn$HAE <- 0
   dat_nonhae_tst$HAE <- 0
   
-  x_nonhae_trn <- dat_nonhae_trn[
-    , -match(grep('patient_id|hae', names(dat_nonhae_trn), valu=T, perl=T, ignore.case=T), 
-             names(dat_nonhae_trn))
-    ]
-  y_nonhae_trn <- dat_nonhae_trn[,match('HAE', names(dat_nonhae_trn))]
-  x_nonhae_tst <- dat_nonhae_tst[
-    , -match(grep('patient_id|hae', names(dat_nonhae_tst), valu=T, perl=T, ignore.case = T), 
-             names(dat_nonhae_tst))
-    ]
+#   x_nonhae_trn <- dat_nonhae_trn[
+#     , -match(grep('patient_id|hae', names(dat_nonhae_trn), valu=T, perl=T, ignore.case=T), 
+#              names(dat_nonhae_trn))
+#     ]
+#   y_nonhae_trn <- dat_nonhae_trn[,match('HAE', names(dat_nonhae_trn))]
+#   x_nonhae_tst <- dat_nonhae_tst[
+#     , -match(grep('patient_id|hae', names(dat_nonhae_tst), valu=T, perl=T, ignore.case = T), 
+#              names(dat_nonhae_tst))
+#     ]
+  x_nonhae_tst <- dat_nonhae_tst[, match(names(x_hae_tst), names(dat_nonhae_tst))]
   y_nonhae_tst = dat_nonhae_tst[,match('HAE', names(dat_nonhae_tst))]
   
-  x_nonhae_tst <- x_nonhae_tst[, match(names(x_hae_tst), names(x_nonhae_tst))]
-  x_nonhae_trn <- x_nonhae_trn[, match(names(x_hae_trn), names(x_nonhae_trn))]
+#   x_nonhae_tst <- x_nonhae_tst[, match(names(x_hae_tst), names(x_nonhae_tst))]
+#   x_nonhae_trn <- x_nonhae_trn[, match(names(x_hae_trn), names(x_nonhae_trn))]
   x_tst <- rbind(x_hae_tst, x_nonhae_tst)
   y_tst <- c(y_hae_tst, y_nonhae_tst)
   dat_tst <- data.frame(y_tst, x_tst)
@@ -563,7 +565,7 @@ run_bagging_rf_par_forTrainigFit <-
 
 run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeFile)
 {
-  dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+  # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
   
   trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
   if(!dir.exists(trace_path)) 
@@ -644,14 +646,14 @@ ConcatenatePreds <- function(simu, dir, iters)
   # Also I don't think it's necessary to save a separate file of resp_simu? 
   ################################################################################
   # saveRDS(resp, file = paste0(dir, "resp_simu", simu, ".RDS"))
-  tst_prob_rf <- readRDS(paste0(dir, "iters=", iters, "\\simu", simu, "\\tst_rf_prob.RDS"))
+  tst_prob_rf <- readRDS(paste0(dir, "simu", simu, "\\tst_rf_prob.RDS"))
   
   return(tst_prob_rf)
 }
 
 get_perf_allSimu <- function(dir, iters, n.simu, recall_tar, haeFile, nonhaeFile){
   
-  dir <- paste0(dir, nonhaeFile, '&', haeFile, '/')
+  dir <- paste0(dir, "iters=", iters, "\\")
   
   temp <- lapply(1:n.simu, ConcatenatePreds, dir=dir, iters=iters)
   
@@ -662,10 +664,10 @@ get_perf_allSimu <- function(dir, iters, n.simu, recall_tar, haeFile, nonhaeFile
   # saveRDS(resp_pred, paste0(dir, 'iters=', iters, '\\resp_pred.RData'))
   # which despite using saveRDS, the target file has an extention of .RData. 
   ################################################################################
-  saveRDS(resp_pred, paste0(dir, 'iters=', iters, '\\resp_pred.RDS'))
+  saveRDS(resp_pred, paste0(dir, 'resp_pred.RDS'))
   temp1 <- msOnTest_sep_v2(resp_pred[, 2], resp_pred[, 1], recall_tar)
   perf <- temp1$ms
-  write.csv(perf, paste0(dir, 'iters=', iters, '\\performance_onAllSimu.csv'))
+  write.csv(perf, paste0(dir,'performance_onAllSimu.csv'))
   return(perf)
 }
 
@@ -745,17 +747,17 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   # and this shouldn't be there since the same was done in the function that
   # calls this one. Otherwise the directory won't be correct. 
   ################################################################################
-    
-  outDir <- dataDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
+    dataDir <- gsub("(.+/)(\\d{4}-\\d{2}-\\d{2}\\W.+\\W)", "\\1", dir, perl=T, ignore.case = T)    
+    outDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
   # if(!dir.exists(plots_path)){dir.create(plots_path, showWarnings = T, recursive = T, model='0777')}
-  x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv"), sep=',', 
+    x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv"), sep=',', 
                      stringsAsFactors = F, head=T)
-  if('lookback_days' %in% names(x_3M)){
-    x_3M <- x_3M %>% 
-      mutate(LOOKBACK_DAYS=lookback_days) %>% 
-      select(-patient_id) %>% 
-      select(-lookback_days)
-  }
+      if('lookback_days' %in% names(x_3M)){
+        x_3M <- x_3M %>% 
+          mutate(LOOKBACK_DAYS=lookback_days) %>% 
+          select(-patient_id) %>% 
+          select(-lookback_days)
+      }
   
 
   
@@ -767,7 +769,7 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   dat_hae_tst <- readRDS(file=paste0(dataDir, "dat_hae_tst_simu", simu, ".RDS"))
   # load(paste0(dataDir, 'dat_hae_trn_tst_split_simu', simu, '.RData'))
   # rm(dat_hae_trn, dat_nonhae_trn, dat_nonhae_tst)
-  gc()
+#   gc()
   
   tst_prob_rf <- rep(0, nrow(x_3M))
   tst_prob_rf_hae <- rep(0, nrow(dat_hae_tst)) #218
@@ -775,7 +777,7 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   Sys.time()->start
   
   # Bagging LASSO, Bagging Random Forest
-  trn_undbag_rf_fit <- readRDS(file=paste0(dataDir, 'trn_rf_fit.RDS'))
+  trn_undbag_rf_fit <- readRDS(file=paste0(outDir, 'trn_rf_fit.RDS'))
   # load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
   for (i in 1:lasso_rf_iters){
     # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters
@@ -783,7 +785,9 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
     tst_prob_rf <- tst_prob_rf + 
       predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
     tst_prob_rf_hae <- tst_prob_rf_hae + 
-      predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID'), names(dat_hae_tst))], type = "prob")[,2]/lasso_rf_iters
+      predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID')
+                                                          , names(dat_hae_tst))]
+              , type = "prob")[,2]/lasso_rf_iters
   }
   
   print(Sys.time()-start)
@@ -820,7 +824,7 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
 run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, 
                         fileNm_3M, path_3M, haeFile, nonhaeFile){
   
-  dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
+  # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
   
   trace_path <- paste0(dir, 'iters=', lasso_rf_iters, '\\')
   if(!dir.exists(trace_path)) 
