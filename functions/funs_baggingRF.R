@@ -273,7 +273,8 @@ run_split <- function(n.simu, haeFile, nonhaeFile, haeDir, nonhaeDir, outDir, it
 
 selectFeature <- function(dir, simu, resultDir){
     dat_hae_trn <- readRDS(file=paste0(dir, "dat_hae_trn_simu", simu, ".RDS"))
-    dat_nonhae_trn <- readRDS(file=paste0(dir, "dat_nonhae_trn_simu", simu, ".RDS"))
+    dat_nonhae_trn <- readRDS(file=paste0(dir, "dat_nonhae_trn_simu", simu, ".RDS")) %>%
+	.[, match(names(dat_hae_trn), names(.))]
 
     dataB4Model1 <- bind_rows(dat_hae_trn, dat_nonhae_trn)  %>%
         # remove constant columns
@@ -295,7 +296,7 @@ selectFeature <- function(dir, simu, resultDir){
         .
     } %>%
     {
-        file_corr <- file(paste(resultDir, "colinear_vars.txt", sep=""), "w")
+        file_corr <- file(paste(dir, "colinear_vars_simu", simu, ".txt", sep=""), "w")
         threshold <- 0.8
         if (bTestMode)
             collThreshold <<- threshold
@@ -373,9 +374,6 @@ selectFeature <- function(dir, simu, resultDir){
         .
     } %>%
     {
-        #       vars2Cap <- read.csv("vars2cap.csv", header=F, 
-        #                             sep=",", colClasses="character")
-        #         vars2Cap1 <- colnames(.)[grepl("FREQ", colnames(.))]
         vars2Cap1 <- colnames(.)[-grepl("region|age|gender|lookback|_flag$", colnames(.), ignore.case = T, perl=T)]
         #       print(paste("num of vars2Cap:", length(vars2Cap)))
         #       print("colnames(.):")
@@ -440,9 +438,9 @@ selectFeature <- function(dir, simu, resultDir){
         #save test data for simulation i
         ts1 <- dataSplited[[i]]$ts
         ts <- ts1[, match(names(trVl), names(ts1))]
-        save(ts, file=paste0(resultDir, 'splitedDataB4ModelTsSim', i, '.RData'))
+        save(ts, file=paste0(dir, 'splitedDataB4ModelTsSim', i, '.RData'))
         
-        save(trVl, file=paste0(resultDir, 'splitedDataB4ModelTrVlSim', i, '.RData'))
+        save(trVl, file=paste0(dir, 'splitedDataB4ModelTrVlSim', i, '.RData'))
         cat('trVl data has been saved !\n', 'and the nrow is', nrow(trVl), '!\n')
     }
 }
