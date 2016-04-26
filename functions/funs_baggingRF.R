@@ -1,6 +1,6 @@
 ################################################################################
 # Lichao: 
-# Previously the function was defined inside msOnTest_sep_v2. This is not 
+# Previously the function was defined inside getModelPerformanceFun. This is not 
 # recommended especially it's a little complex. 
 ################################################################################
 
@@ -95,7 +95,7 @@ PrintMaxAndPercentile <- function(vec, percentile) {
 
 
 
-msOnTest_sep_v2 <- function(pred, response, recall_tar){
+getModelPerformanceFun <- function(pred, response, recall_tar){
   #pred <- apply(pred, 1, mean, na.rm=T)
   predobj <- prediction(pred, response)
   #add plot
@@ -127,7 +127,7 @@ msOnTest_sep_v2 <- function(pred, response, recall_tar){
     
 }
 
-msOnTest_sep_v3 <- function(pred, response, recall_tar, simu){
+getModelPerformanceForPlot <- function(pred, response, recall_tar, simu){
     #pred <- apply(pred, 1, mean, na.rm=T)
     predobj <- prediction(pred, response)
     #add plot
@@ -140,7 +140,7 @@ msOnTest_sep_v3 <- function(pred, response, recall_tar, simu){
     aupr <- trapz(rec_prec_omitMiss$recall, rec_prec_omitMiss$precision)
     bucket <- cut(recall, breaks=seq(0, 1, 0.01), include.lowest=T,right=F)
     rec_prec_byBucket <- aggregate(rec_prec, by=list(bucket), function(i)mean(i, na.rm=T))
-    plot(recall, precision, type='l', main=paste0('recall-precision curve simulation', simu))
+    #plot(recall, precision, type='l', main=paste0('recall-precision curve simulation', simu))
     #plot(perf)
     #     dev.off()
     
@@ -791,7 +791,7 @@ get_perf_allSimu <- function(dir, iters, n.simu, recall_tar, haeFile, nonhaeFile
   # which despite using saveRDS, the target file has an extention of .RData. 
   ################################################################################
   saveRDS(resp_pred, paste0(dir, 'resp_pred.RDS'))
-  temp1 <- msOnTest_sep_v2(resp_pred[, 2], resp_pred[, 1], recall_tar)
+  temp1 <- getModelPerformanceFun(resp_pred[, 2], resp_pred[, 1], recall_tar)
   perf <- temp1$ms
   write.csv(perf, paste0(dir,'performance_onAllSimu.csv'))
   return(perf)
@@ -804,7 +804,7 @@ get_perf_allSimu_forPRcurve <- function(dataDir, iters, n.simu, recall_tar){
         
     # saveRDS(resp_pred, paste0(outdir, 'iters=', iters, '\\resp_pred.RData'))
     resp_pred <- readRDS(paste0(dataDir1, 'resp_pred.RData'))
-    temp1 <- msOnTest_sep_v2(resp_pred[, 2], resp_pred[, 1], recall_tar)
+    temp1 <- getModelPerformanceFun(resp_pred[, 2], resp_pred[, 1], recall_tar)
     perf <- temp1$ms
     recPrec <- temp1$rec_prec
     write.csv(recPrec, paste0(outDir, "recall_precision_on200K.csv"))
@@ -828,7 +828,7 @@ get_perf_3M_par_forPRcurve <- function(simu, dir, lasso_rf_iters, recall_tar, fi
     
     pred <- c(tst_prob_rf_hae, tst_prob_rf)
     
-    perf_result <- msOnTest_sep_v3(pred, resp, recall_tar=seq(0.5, 0.05, -0.05), dataDir, simu)
+    perf_result <- getModelPerformanceForPlot(pred, resp, recall_tar=seq(0.5, 0.05, -0.05), dataDir, simu)
     recPrec <- perf_result$rec_prec
     write.csv(recPrec, paste0(plots_path, "recall_precision_sim", simu, '.csv'))
     write.csv(perf_result$curve, paste0(plots_path, "recall_precision_byBucket_sim", simu, '.csv'), 
@@ -943,11 +943,11 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   ################################################################################
   # Lichao: 
   # Previously the following line was: 
-  # perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05), oudDir)
-  # But function msOnTest_sep_v2 doesn't has a parameter 'outDir'. This is also 
+  # perf_result <- getModelPerformanceFun(pred, resp, recall_tar=seq(0.5, 0.05, -0.05), oudDir)
+  # But function getModelPerformanceFun doesn't has a parameter 'outDir'. This is also 
   # inconsistent with other places where the same function is called. 
   ################################################################################
-  perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
+  perf_result <- getModelPerformanceFun(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
   write.csv(perf_result$ms, paste0(outDir, 'perf_on3M.csv'))
   result <- c(simu=simu, perf_result$ms)
   return(result)
@@ -972,7 +972,7 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar,
   cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
   sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", "lasso_rf_iters",
            "recall_tar", "fileNm_3M", "path_3M", "bFeatureSelection")
-  sfExport('get_perf_3M_par', 'msOnTest_sep_v2')
+  sfExport('get_perf_3M_par', 'getModelPerformanceFun')
   
   sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
   # Auxiliary functions
@@ -1063,7 +1063,7 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar,
 #     
 #     pred <- c(tst_prob_rf_hae, tst_prob_rf)
 #     
-#     perf_result <- msOnTest_sep_v2(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
+#     perf_result <- getModelPerformanceFun(pred, resp, recall_tar=seq(0.5, 0.05, -0.05))
 #     write.csv(perf_result$ms, paste0(outDir, 'perf_on2.5M.csv'))
 #     result <- c(simu=simu, perf_result$ms)
 #     return(result)
@@ -1082,7 +1082,7 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar,
 #     
 #     cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
 #     sfExport(  'outDir', 'wk_dir')
-#     sfExport('get_perf_2.5M_par', 'msOnTest_sep_v2'
+#     sfExport('get_perf_2.5M_par', 'getModelPerformanceFun'
 #     )
 #     
 #     sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
