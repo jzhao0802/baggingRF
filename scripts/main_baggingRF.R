@@ -19,7 +19,7 @@ setwd(main.wk_dir)
 # 
 main.n.simu = 5
 main.recall_tar <- seq(0.5, 0.05, -0.05)
-main.iters <- 200
+main.iters <- 1
 main.BageBucket <- T
 main.bTestMode <- T
 main.bFeatureSelection <- T
@@ -75,12 +75,12 @@ run_bagging_rf(n.simu=main.n.simu,
 cat((proc.time()-main.t0)[3]/60, '!\n')
 print("run_bagging_rf finished. ")
 
-iter200 <- get_perf_allSimu(dir=main.outDir, 
-                                                  iters=main.iters, 
-                                                  n.simu=main.n.simu, 
-                                                  recall_tar=main.recall_tar, 
-                                                  nonhaeFile=main.nonhaeFile, 
-                                                  haeFile=main.haeFile)
+get_perf_allSimu(dir=main.outDir, 
+                 iters=main.iters, 
+                 n.simu=main.n.simu, 
+                 recall_tar=main.recall_tar, 
+                 nonhaeFile=main.nonhaeFile, 
+                 haeFile=main.haeFile)
 print("get_perf_allSimu finished.")
 
 main.t1 <- proc.time()
