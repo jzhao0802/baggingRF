@@ -23,6 +23,7 @@ main.iters <- 1
 main.BageBucket <- T
 main.bTestMode <- T
 main.bFeatureSelection <- T
+main.bTest <- T
 ################################################################################
 # Lichao: 
 # Previously the file names are given as follows: 
@@ -52,7 +53,8 @@ if(main.bFeatureSelection==T){
                       , haeFile=main.haeFile
                       , dir=main.modelDataOutDir
                       , wk_dir=main.wk_dir
-                      , bTestMode=main.bTestMode)
+                      , bTestMode=main.bTestMode
+                      , bTest=main.bTest)
 }
 
 main.timeStamp <- as.character(Sys.time())
@@ -70,7 +72,9 @@ run_bagging_rf(n.simu=main.n.simu,
                lasso_rf_iters=main.iters, 
                nonhaeFile=main.nonhaeFile, 
                haeFile=main.haeFile,
-               bFeatureSelection=main.bFeatureSelection)
+               bFeatureSelection=main.bFeatureSelection,
+               bTest=main.bTest
+               )
 
 cat((proc.time()-main.t0)[3]/60, '!\n')
 print("run_bagging_rf finished. ")
@@ -88,6 +92,9 @@ run_perf_3M(
     dir=main.outDir, wk_dir=main.wk_dir, lasso_rf_iters=main.iters, n.simu=main.n.simu, 
     recall_tar=main.recall_tar, fileNm_3M=main.fileNm_3M, path_3M=main.path_3M, 
     haeFile=main.haeFile, nonhaeFile=main.nonhaeFile,
-    bFeatureSelection=main.bFeatureSelection)
+    bFeatureSelection=main.bFeatureSelection,
+    BageBucket=main.BageBucket,
+    bTestMode=main.bTestMode,
+    bTest = main.bTest)
 cat((proc.time()-main.t1)[3]/60)
 print("run_perf_3M finished. ")
