@@ -669,7 +669,7 @@ run_bagging_rf_par_forTrainigFit <-
 #   x_nonhae_trn <- x_nonhae_trn[, match(names(x_hae_trn), names(x_nonhae_trn))]
   x_tst <- rbind(x_hae_tst, x_nonhae_tst)
   y_tst <- c(y_hae_tst, y_nonhae_tst)
-  dat_tst <- data.frame(y_tst, x_tst)
+  dat_tst <- as.data.frame(cbind(y_tst, x_tst))
   names(dat_tst)[1]='HAE'
   
   tst_label <- y_tst
