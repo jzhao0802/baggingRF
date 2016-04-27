@@ -63,8 +63,33 @@ addBucketAge <- function(data, outDir, bTestMode){
 }
 
 
+
+PrintMaxAndPercentile <- function(vec, percentile) {
+    p <- quantile(vec, percentile/100, type=3)
+    m <- max(vec)
+    print("head(vec):")
+    print(head(vec))
+    print(paste(names(vec), ", Max:", m, ", 99 percentile:", p))
+}
+
+
+CapPercentile4Percentile <- function(vec, Hae, percentile)
+{
+    if ((percentile < 0) | (percentile > 100))
+        stop("Error! percentile must be between 0 and 100 (inclusive). ")
+    positivePatPart <- vec[Hae==1]
+    nonzeroPart <- positivePatPart[positivePatPart > 0]
+    
+    threshold <- quantile(nonzeroPart, percentile/100, type=3)
+    #vec[vec > threshold] <- threshold
+    #   print(paste("In CapPercentile threshold:", threshold))
+    #   print(paste("In CapPercentile max(vec):", max(vec)))
+    return (threshold)
+}
+
 # uses the non-zero values of the positive/HAE patients part
-CapPercentile <- function(vec, Hae, percentile) {
+CapPercentile <- function(vec, Hae, percentile)
+{
     if ((percentile < 0) | (percentile > 100))
         stop("Error! percentile must be between 0 and 100 (inclusive). ")
     positivePatPart <- vec[Hae==1]
@@ -73,24 +98,9 @@ CapPercentile <- function(vec, Hae, percentile) {
         return (vec)
     threshold <- quantile(nonzeroPart, percentile/100, type=3)
     vec[vec > threshold] <- threshold
+    #   print(paste("In CapPercentile threshold:", threshold))
+    #   print(paste("In CapPercentile max(vec):", max(vec)))
     return (vec)
-}
-
-CapPercentile_Threshold <- function(vec, Hae, percentile) {
-    if ((percentile < 0) | (percentile > 100))
-        stop("Error! percentile must be between 0 and 100 (inclusive). ")
-    positivePatPart <- vec[Hae==1]
-    nonzeroPart <- positivePatPart[positivePatPart > 0]
-    threshold <- quantile(nonzeroPart, percentile/100, type=3)
-    return (threshold)
-}
-
-PrintMaxAndPercentile <- function(vec, percentile) {
-    p <- quantile(vec, percentile/100, type=3)
-    m <- max(vec)
-    print("head(vec):")
-    print(head(vec))
-    print(paste(names(vec), ", Max:", m, ", 99 percentile:", p))
 }
 
 
@@ -415,13 +425,13 @@ selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
     
     # cap variables with extreme values selected by Nadea
     #     ii.	Cap extreme values;
-    data_cap <- dataB4Model1 %>%       
+    data_cap <- dataB4Model1 %>%     
     {
         print("Capping extreme values..");cat("\n")
         .
     } %>%
     {
-        vars2Cap1 <- colnames(.)[-grepl("region|age|gender|lookback|_flag$", colnames(.), ignore.case = T, perl=T)]
+        vars2Cap1 <- colnames(.)[!grepl("region|age|gender|lookback|_flag$|HAE", colnames(.), ignore.case = T, perl=T)]
         #       print(paste("num of vars2Cap:", length(vars2Cap)))
         #       print("colnames(.):")
         #       print(colnames(.))
@@ -434,12 +444,12 @@ selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
         #             2, PrintMaxAndPercentile, percentile=99)
         
         # compute 99% percentile
-        capping_vct_onPos <<- sapply(dataLastStep[, vars2Cap], function(x)CapPercentile(x, Hae=dataLastStep$HAE, percentile=99))
+        capping_vct_onPos <<- sapply(dataLastStep[, vars2Cap], function(x)CapPercentile4Percentile(x, Hae=dataLastStep$HAE, percentile=99))
         names(capping_vct_onPos) <- gsub("(.+)(\\.99%)", "\\1", names(capping_vct_onPos), perl=T)
         
         save(capping_vct_onPos, file=paste0(outDir, 'capping_vct_onPos_simu', simu, '.RData'))
         dataMutated <- 
-            mutate_each(dataLastStep, funs(CapPercentile_Threshold(., Hae=dataLastStep$HAE, percentile = 99)), 
+            mutate_each(dataLastStep, funs(CapPercentile(., Hae=dataLastStep$HAE, percentile = 99)), 
                         one_of(vars2Cap))
         
         #         dataMutated <- dataLastStep %>% 
@@ -456,7 +466,7 @@ selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
     {
         if (bTestMode)
         {
-            afreqVars <- colnames(dataB4Capping)[-grepl("region|age|gender|lookback|_flag$", colnames(.), ignore.case = T, perl=T)]
+            afreqVars <- colnames(dataB4Capping)[!grepl("region|age|gender|lookback|_flag$|HAE", colnames(.), ignore.case = T, perl=T)]
             if(length(afreqVars) > 0) {
                 for (iVar in 1:length(afreqVars))
                 {
@@ -486,19 +496,23 @@ selectFeature <- function(simu, nonhaeFile=main.nonhaeFile
         #save test data for simulation i
         #ts1 <- dataSplited[[i]]$ts 
         trVl_hae <- trVl %>% filter(HAE==1) %>%
-            bind_cols(ptid_hae_trn, .)
+            bind_cols(ptid_hae_trn, .) %>%
+            as.data.frame(.)
         trVl_nonhae <- trVl %>% filter(HAE==0) %>%
-            bind_cols(ptid_nonhae_trn, .)
+            bind_cols(ptid_nonhae_trn, .) %>%
+            as.data.frame(.)
             
 		ts_hae <- readRDS(file=paste0(outDir, "dat_hae_tst_simu", simu, ".RDS")) %>%
     		.[, c(grep('patient_id', names(.), ignore.case = T, value = F)
-    		      , match(names(trVl), names(.)))
-    		  ]
+    		      , match(names(trVl), names(.))) 
+    		  ] %>%
+		    as.data.frame(.)
 		ts_nonhae <- readRDS(file=paste0(outDir, "dat_nonhae_tst_simu", simu, ".RDS")) %>%
     		.[, c(grep('patient_id', names(.), ignore.case = T, value = F)
     		    ,match(names(trVl), names(.)))
-    		  ]
-		
+    		  ] %>%
+		    as.data.frame(.)
+		 
 		saveRDS(trVl_hae, file=paste0(outDir, "dat_hae_trn_afterFeatureSel_"
 		                                 , "simu", simu, ".RDS"))
 		saveRDS(trVl_nonhae, file=paste0(outDir, "dat_nonhae_trn_afterFeatureSel_"
