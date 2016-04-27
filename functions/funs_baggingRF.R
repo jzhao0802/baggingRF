@@ -577,7 +577,7 @@ run_selectFeature <- function(n.simu, nonhaeFile=main.nonhaeFile
 }
 
 run_bagging_rf_par_forTrainigFit <- 
-  function(simu, dir, lasso_rf_iters, nonhaeFile, haeFile, bFeatureSelection)
+  function(simu, dir, lasso_rf_iters, nonhaeFile, haeFile, bFeatureSelection, bTest)
 {
   ################################################################################
   # Lichao: 
@@ -614,7 +614,9 @@ run_bagging_rf_par_forTrainigFit <-
       
   }
     
-    
+  if(bTest==T){
+      dat_nonhae_trn <- dat_nonhae_trn[1:1000,]
+  }
     
   #########################################################################
   ### Model training (all training data)
@@ -623,10 +625,15 @@ run_bagging_rf_par_forTrainigFit <-
   Sys.time()->start
   
   # (1) Underbagging LASSO / Random Forest
-  trn_ans_lasso_rf <- 
-    undbag_lasso_rf(rf_formula=NA, dat_pos=dat_hae_trn, dat_neg=dat_nonhae_trn, 
-                    iters=lasso_rf_iters, mtry=25, ntree=300)
-  # trn_undbag_lasso_fit = trn_ans_lasso_rf$undbag_lasso_fit
+  if(bTest==T){
+      trn_ans_lasso_rf <- 
+          undbag_lasso_rf(rf_formula=NA, dat_pos=dat_hae_trn, dat_neg=dat_nonhae_trn, 
+                          iters=lasso_rf_iters, mtry=1, ntree=3)
+  }else{
+      trn_ans_lasso_rf <- 
+          undbag_lasso_rf(rf_formula=NA, dat_pos=dat_hae_trn, dat_neg=dat_nonhae_trn, 
+                          iters=lasso_rf_iters, mtry=25, ntree=300)
+  }
   trn_undbag_rf_fit = trn_ans_lasso_rf$undbag_rf_fit
   
   print(Sys.time()-start)
@@ -637,7 +644,7 @@ run_bagging_rf_par_forTrainigFit <-
   # No longer named '*Mar31*'
   ################################################################################
   saveRDS(trn_undbag_rf_fit, file=paste0(outDir, "trn_rf_fit.RDS"))
-  
+#   trn_undbag_rf_fit <- readRDS(file=paste0(outDir, "trn_rf_fit.RDS"))
   # save(dat_hae_trn, dat_nonhae_trn, trn_undbag_rf_fit, file=paste(outDir, "trn_rf_fit_Mar31.RData", sep=""))
   
   
@@ -703,7 +710,7 @@ run_bagging_rf_par_forTrainigFit <-
 
 
 run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeFile
-                           , bFeatureSelection)
+                           , bFeatureSelection, bTest=main.bTest)
 {
   # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
   
@@ -719,7 +726,7 @@ run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeF
   #sfSource("F:\\Jie\\Shire\\03_code\\subFunc_v3.R")
   
   cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
-  sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", 'bFeatureSelection')
+  sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", 'bFeatureSelection', 'bTest')
   sfExport('undbag_lasso_rf')
   
   sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
@@ -747,7 +754,8 @@ run_bagging_rf <- function(n.simu, wk_dir, dir, lasso_rf_iters, nonhaeFile, haeF
   # Arguments "nonhaeFile" and "haeFile" were not passed to the function previously. 
   ################################################################################
   temp <- sfClusterApplyLB(1:n.simu, run_bagging_rf_par_forTrainigFit, dir, 
-                           lasso_rf_iters, nonhaeFile, haeFile, bFeatureSelection)
+                           lasso_rf_iters, nonhaeFile, haeFile, bFeatureSelection,
+                           bTest)
   #save(pred_ts_allSim, file=paste0(modelDir, '//pred_allSim.RData'))
   sfStop()
   # run_bagging_rf_par_forTrainigFit(1, dir, lasso_rf_iters, nonhaeFile, haeFile)
@@ -880,7 +888,10 @@ run_perf_3M_forPRcurve <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_t
 
 get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M, 
                             path_3M, nonhaeFile, haeFile,
-                            bFeatureSelection){
+                            bFeatureSelection,
+                            BageBucket=main.BageBucket,
+                            bTestMode=main.bTestMode,
+                            bTest = main.bTest){
   ################################################################################
   # Lichao: 
   # Previously there was this line: 
@@ -891,8 +902,14 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
     dataDir <- gsub("(.+/)(\\d{4}-\\d{2}-\\d{2}\\W.+\\W)", "\\1", dir, perl=T, ignore.case = T)    
     outDir <- paste0(dir, 'iters=', lasso_rf_iters, '\\simu', simu, '\\')
   # if(!dir.exists(plots_path)){dir.create(plots_path, showWarnings = T, recursive = T, model='0777')}
-    x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv"), sep=',', 
-                     stringsAsFactors = F, head=T)
+    if(bTest==T){
+        x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv"), sep=',', 
+                           stringsAsFactors = F, head=T)[1:1000,]
+    }else{
+        x_3M <- read.table(paste0(path_3M, fileNm_3M, ".csv"), sep=',', 
+                           stringsAsFactors = F, head=T)
+    }
+    
       if('lookback_days' %in% names(x_3M)){
         x_3M <- x_3M %>% 
           mutate(LOOKBACK_DAYS=lookback_days) %>% 
@@ -900,7 +917,11 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
           select(-lookback_days)
       }
   
-
+    # if age should be bucketed
+    if(BageBucket==T){
+        x_3M <- addBucketAge(x_3M, outDir, bTestMode)
+    }
+    
   
   ################################################################################
   # Lichao: 
@@ -927,13 +948,13 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
   # load(paste0(dataDir, 'trn_rf_fit_Mar31.RData'))
   for (i in 1:lasso_rf_iters){
     # 	tst_prob_lasso = tst_prob_lasso + predict(trn_undbag_lasso_fit[[i]], as.matrix(x_tst), s="lambda.min", type="response")/lasso_rf_iters
-    cat('i=', i, '!\n')
-    tst_prob_rf <- tst_prob_rf + 
-      predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
-    tst_prob_rf_hae <- tst_prob_rf_hae + 
-      predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID')
-                                                          , names(dat_hae_tst))]
-              , type = "prob")[,2]/lasso_rf_iters
+      cat('i=', i, '!\n')
+      tst_prob_rf <- tst_prob_rf + 
+          predict(trn_undbag_rf_fit[[i]], x_3M, type = "prob")[,2]/lasso_rf_iters
+      tst_prob_rf_hae <- tst_prob_rf_hae + 
+          predict(trn_undbag_rf_fit[[i]], dat_hae_tst[,-match(c('HAE', 'PATIENT_ID')
+                                                              , names(dat_hae_tst))]
+                  , type = "prob")[,2]/lasso_rf_iters
   }
   
   print(Sys.time()-start)
@@ -969,7 +990,10 @@ get_perf_3M_par <- function(simu, dir, lasso_rf_iters, recall_tar, fileNm_3M,
 
 run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar, 
                         fileNm_3M, path_3M, haeFile, nonhaeFile,
-                        bFeatureSelection=main.bFeatureSelection){
+                        bFeatureSelection=main.bFeatureSelection,
+                        BageBucket=main.BageBucket,
+                        bTestMode=main.bTestMode,
+                        bTest = main.bTest){
   
   # dir <- paste0(dir, nonhaeFile, '&', haeFile, '\\')
   
@@ -985,7 +1009,8 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar,
   
   cat(file=traceFile, append=TRUE, 'n.simu simulations parallel sfExport running!\n')
   sfExport('dir', 'wk_dir', "nonhaeFile", "haeFile", "lasso_rf_iters",
-           "recall_tar", "fileNm_3M", "path_3M", "bFeatureSelection")
+           "recall_tar", "fileNm_3M", "path_3M", "bFeatureSelection",
+          "BageBucket" , "bTestMode", "bTest")
   sfExport('get_perf_3M_par', 'getModelPerformanceFun')
   
   sfSource(paste0(wk_dir, "scripts/loadpackage.R"))
@@ -1014,13 +1039,13 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar,
   ################################################################################
   temp <- sfClusterApplyLB(1:n.simu, get_perf_3M_par, dir, lasso_rf_iters, 
                            recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile,
-                           bFeatureSelection)
+                           bFeatureSelection, BageBucket, bTestMode, bTest)
   sfStop()
   
     # get_perf_3M_par(1, dir, lasso_rf_iters, recall_tar, fileNm_3M, path_3M, nonhaeFile, haeFile)
 #     print("get_perf_3M_par finished.")
   ms_allSimu <- ldply(temp, quickdf)
-  
+  ms_allSimuAvg <- apply(ms_allSimu, 2, mean)[-1]
   ################################################################################
   # Lichao: 
   # Previously the following line was: 
@@ -1029,6 +1054,8 @@ run_perf_3M <- function(dir, wk_dir, lasso_rf_iters, n.simu, recall_tar,
   # Seriously, we need to be way more careful when coding. 
   ################################################################################
   write.csv(ms_allSimu, paste0(trace_path, 'perf_on3M_allSimu.csv'))
+  write.csv(ms_allSimuAvg, paste0(trace_path, 'performance_onAllSimu_3M.csv'))
+  
   return(ms_allSimu)
     
 }
