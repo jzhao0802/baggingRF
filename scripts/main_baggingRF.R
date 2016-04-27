@@ -20,7 +20,9 @@ setwd(main.wk_dir)
 main.n.simu = 5
 main.recall_tar <- seq(0.5, 0.05, -0.05)
 main.iters <- 200
-
+main.BageBucket <- T
+main.bTestMode <- T
+main.bFeatureSelection <- T
 ################################################################################
 # Lichao: 
 # Previously the file names are given as follows: 
@@ -39,11 +41,19 @@ main.haeDir <- paste0(main.dir, "01_data\\")
 main.nonhaeDir <- paste0(main.haeDir, "newdata_200K_3M\\")
 main.path_3M <- main.nonhaeDir
 main.modelDataOutDir <- paste0(main.wk_dir, "Results/")
-run_split(n.simu=main.n.simu, nonhaeFile=main.nonhaeFile, haeFile=main.haeFile, 
+split_simulations(n.simu=main.n.simu, nonhaeFile=main.nonhaeFile, haeFile=main.haeFile, 
           haeDir=main.haeDir, nonhaeDir=main.nonhaeDir, outDir=main.modelDataOutDir,
-          iters=main.iters)
-print("run_split finished.")
+          iters=main.iters, BageBucket=main.BageBucket, bTestMode = main.bTestMode)
+print("split_simulations finished.")
 
+if(main.bFeatureSelection==T){
+    run_selectFeature(n.simu=main.n.simu
+                      , nonhaeFile=main.nonhaeFile
+                      , haeFile=main.haeFile
+                      , dir=main.modelDataOutDir
+                      , wk_dir=main.wk_dir
+                      , bTestMode=main.bTestMode)
+}
 
 main.timeStamp <- as.character(Sys.time())
 main.timeStamp <- gsub(":", ".", main.timeStamp)  # replace ":" by "."
@@ -59,7 +69,9 @@ run_bagging_rf(n.simu=main.n.simu,
                dir=main.outDir, 
                lasso_rf_iters=main.iters, 
                nonhaeFile=main.nonhaeFile, 
-               haeFile=main.haeFile)
+               haeFile=main.haeFile,
+               bFeatureSelection=main.bFeatureSelection)
+
 cat((proc.time()-main.t0)[3]/60, '!\n')
 print("run_bagging_rf finished. ")
 
@@ -74,7 +86,8 @@ print("get_perf_allSimu finished.")
 main.t1 <- proc.time()
 run_perf_3M(
     dir=main.outDir, wk_dir=main.wk_dir, lasso_rf_iters=main.iters, n.simu=main.n.simu, 
-            recall_tar=main.recall_tar, fileNm_3M=main.fileNm_3M, path_3M=main.path_3M, 
-            haeFile=main.haeFile, nonhaeFile=main.nonhaeFile)
+    recall_tar=main.recall_tar, fileNm_3M=main.fileNm_3M, path_3M=main.path_3M, 
+    haeFile=main.haeFile, nonhaeFile=main.nonhaeFile,
+    bFeatureSelection=main.bFeatureSelection)
 cat((proc.time()-main.t1)[3]/60)
 print("run_perf_3M finished. ")
